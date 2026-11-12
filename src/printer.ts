@@ -1,5 +1,5 @@
-import { AstPath, Doc, ParserOptions } from "prettier";
-import { builders } from "prettier/doc";
+import { doc as prettierDoc } from "prettier";
+import type { AstPath, Doc, ParserOptions } from "prettier";
 import { RenderMode } from "./parser/tagRegistry";
 import {
   AttributeNode,
@@ -34,7 +34,7 @@ const {
   group,
   indent,
   line,
-} = builders;
+} = prettierDoc.builders;
 
 function isInlineAndHasNoLeadingSpaces(node: ParserNode | undefined): boolean {
   return node != null && node.isInlineRenderMode && !node.hasLeadingSpaces;
@@ -239,11 +239,11 @@ function breakClosingTag(parent: AnyNodeWithChildren): boolean {
  * [
  *   group(fill("<span>Hello,World!</span>"))
  *   group([
- *     line,
- *     group([
- *       group(fill("<span>")),
- *       group(fill("Hello, World!")
- *     ])
+ * line,
+ * group([
+ * group(fill("<span>")),
+ * group(fill("Hello, World!")
+ * ])
  *   ])
  * ]
  * vs
@@ -251,8 +251,8 @@ function breakClosingTag(parent: AnyNodeWithChildren): boolean {
  *   group(fill("<span>Hello,World!</span>")),
  *   line,
  *   group([
- *     group(fill("<span>")),
- *     group(fill("Hello, World!")
+ * group(fill("<span>")),
+ * group(fill("Hello, World!")
  *   ])
  * ]
  *
@@ -265,7 +265,7 @@ function printChildren(
   print: (path: AstPath) => Doc
 ): Doc[] {
   return path.map((childPath) => {
-    const childNode = childPath.getValue();
+    const childNode = childPath.node;
     const parts: Doc[] = [];
     const childParts = print(childPath);
 
@@ -395,7 +395,7 @@ export default function print(
   options: ParserOptions,
   print: (path: AstPath) => Doc
 ): Doc {
-  const node: ParserNode = path.getValue();
+  const node: ParserNode = path.node;
 
   if (node.prettierIgnore.length > 0) {
     const lines = options.originalText.split(NEWLINE_REGEX);

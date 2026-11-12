@@ -1,7 +1,6 @@
 lexer grammar VelocityHtmlLexer;
 
 @lexer::header { 
-  import { Interval } from 'antlr4ts/misc/Interval';
   type VelocityMode = "directive" | "reference";
 } 
 @lexer::members {
@@ -72,11 +71,11 @@ lexer grammar VelocityHtmlLexer;
     let index = 1;
     let escapeCount = 0;
     while (true) {
-      const startPosition = this._tokenStartCharIndex - index;
+      const startPosition = this.tokenStartCharIndex - index;
       if (startPosition < 0) {
         break;
       }
-      let characterInStream = this.inputStream.getText(Interval.of(startPosition, startPosition));
+      const characterInStream = this.inputStream.getTextFromRange(startPosition, startPosition);
       if (characterInStream == "\\") {
         escapeCount++;
       } else {
@@ -116,12 +115,12 @@ lexer grammar VelocityHtmlLexer;
   private tryMatchVelocityElement(index: number, mode: VelocityMode): boolean {
     let velocityDirectiveMode : 'start' | 'identifier' | 'space' = 'start';
     while (true) {
-      const startPosition = this._tokenStartCharIndex + index;
+      const startPosition = this.tokenStartCharIndex + index;
       // TODO Test
       if (startPosition >= this.inputStream.size) {
         return false;
       }
-      let characterInStream = this.inputStream.getText(Interval.of(startPosition, startPosition));
+      const characterInStream = this.inputStream.getTextFromRange(startPosition, startPosition);
       let codePoint = characterInStream.toLowerCase().codePointAt(0) as number;
       
       const isAlpha = this.vtlValidAlpha.has(codePoint);
@@ -183,7 +182,8 @@ lexer grammar VelocityHtmlLexer;
   }
 
   private popModeIfNecessary(): void {
-    const characterInStream = this.inputStream.getText(Interval.of((this.inputStream as any)._position, (this.inputStream as any)._position));
+    const position = this.inputStream.index;
+    const characterInStream = this.inputStream.getTextFromRange(position, position);
     const codePoint = characterInStream.toLowerCase().codePointAt(0);
     if (codePoint == null) {
       // ?
@@ -191,11 +191,11 @@ lexer grammar VelocityHtmlLexer;
     }
     if (!this.vtlContinueReferenceMode.has(codePoint)) {
       // Pop velocity reference mode (no popMode in lexer grammar)
-      const isVelocityReferenceMode = this._mode == VelocityHtmlLexer.VELOCITY_REFERENCE_MODE;
+      const isVelocityReferenceMode = this.mode == VelocityHtmlLexer.VELOCITY_REFERENCE_MODE;
       // Pop velocity mode and lexer popMode will pop velocity reference mode. 
       //                             ▼
       // Example: allProducts.get(key)</span>
-      const isVelocityModeInsideVelocityReferenceMode = this._mode == VelocityHtmlLexer.VELOCITY_MODE && this._modeStack.peek() == VelocityHtmlLexer.VELOCITY_REFERENCE_MODE;
+      const isVelocityModeInsideVelocityReferenceMode = this.mode == VelocityHtmlLexer.VELOCITY_MODE && this.modeStack[this.modeStack.length - 1] == VelocityHtmlLexer.VELOCITY_REFERENCE_MODE;
       if (isVelocityModeInsideVelocityReferenceMode || isVelocityReferenceMode) {
         this.debug(`next character ${characterInStream} is not VTL continuation. Popping mode`, this.printModeStack());
         this.popMode();
@@ -204,7 +204,7 @@ lexer grammar VelocityHtmlLexer;
     }
   }
   private pushModeIfNecessary(): void {
-    const tokenText = this.inputStream.getText(Interval.of(this._tokenStartCharIndex, (this.inputStream as any)._position));
+    const tokenText = this.inputStream.getTextFromRange(this.tokenStartCharIndex, this.inputStream.index);
     const codePoint = tokenText.toLowerCase().codePointAt(tokenText.length - 1);
     if (codePoint == null) {
       // ?
@@ -224,8 +224,8 @@ lexer grammar VelocityHtmlLexer;
    }
 
    private getNextCharacters(numberOfCharacters:number, offset = 0) {
-     const currentPosition = this._tokenStartCharIndex + offset;
-     const nextCharacters = this.inputStream.getText(Interval.of(currentPosition, currentPosition + numberOfCharacters));
+     const currentPosition = this.tokenStartCharIndex + offset;
+     const nextCharacters = this.inputStream.getTextFromRange(currentPosition, currentPosition + numberOfCharacters);
      this.debug('nextCharacters', nextCharacters);
      return nextCharacters;
    }
@@ -237,7 +237,7 @@ lexer grammar VelocityHtmlLexer;
    public popModeForCurrentTag() : void {
      this.debug(`before ${this.text}`, this.printModeStack());
      if (this.nextTagCloseMode != null) {
-      this.mode(this.nextTagCloseMode);
+      this.mode = this.nextTagCloseMode;
       this.nextTagCloseMode = null;
      } else {
       this.popMode();
@@ -246,14 +246,14 @@ lexer grammar VelocityHtmlLexer;
   }
 
   public printModeStack() {
-    const modeStack = this._modeStack.toArray();
-    return `mode: ${this._mode}, modeStack: ${modeStack.length === 0? '<empty>' : modeStack}`;
+    const modeStack = this.modeStack;
+    return `mode: ${this.mode}, modeStack: ${modeStack.length === 0? '<empty>' : modeStack}`;
   }
 
   private rcDataTags = ["script", "pre", "textarea", "title"];
   private tagName: string | null = null;
 
-	public setNextTagCloseMode() {
+  public setNextTagCloseMode() {
     this.tagName = this.text.substring(1).toLowerCase();
     this.nextTagCloseMode = this.rcDataTags.includes(this.tagName)? VelocityHtmlLexer.RCDATA_MODE : VelocityHtmlLexer.DEFAULT_MODE;
   }

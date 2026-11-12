@@ -1,5 +1,10 @@
-import { CommonToken, Recognizer } from "antlr4ts";
-import { ATNSimulator } from "antlr4ts/atn/ATNSimulator";
+import {
+  CommonToken,
+  type ATNSimulator,
+  type CharStream,
+  type Recognizer,
+  type TokenSource,
+} from "antlr4ng";
 
 export function isCollapsibleWhitespaceOnly(text: string): boolean {
   // There are many whitespace characters that we don't want to collapse.
@@ -15,12 +20,27 @@ export interface SourceCodeLocation {
   column: number;
 }
 
+// Mirrors the (protected) CommonToken constructor argument.
+export interface VelocityTokenDetails {
+  source: [TokenSource | null, CharStream | null];
+  type: number;
+  channel?: number;
+  start?: number;
+  stop?: number;
+  text?: string;
+  line?: number;
+  tokenIndex?: number;
+  column?: number;
+}
+
 export class VelocityToken extends CommonToken {
   public isInsideString = false;
 
-  public toVelocityString<TSymbol, ATNInterpreter extends ATNSimulator>(
-    recognizer: Recognizer<TSymbol, ATNInterpreter> | undefined
-  ): string {
+  public constructor(details: VelocityTokenDetails) {
+    super(details);
+  }
+
+  public toVelocityString(recognizer?: Recognizer<ATNSimulator>): string {
     let stringRepresentation = super.toString(recognizer);
     if (this.isInsideString) {
       stringRepresentation = stringRepresentation.replace(
@@ -46,7 +66,7 @@ export class VelocityToken extends CommonToken {
   get startLocation(): SourceCodeLocation {
     return {
       line: this.line,
-      column: this.charPositionInLine + 1,
+      column: this.column + 1,
     };
   }
 
@@ -55,12 +75,12 @@ export class VelocityToken extends CommonToken {
     if (lines.length == 1) {
       return {
         line: this.line,
-        column: this.charPositionInLine + this.textValue.length + 1,
+        column: this.column + this.textValue.length + 1,
       };
     } else {
       return {
         line: this.line + (lines.length - 1),
-        column: this.charPositionInLine + lines[lines.length - 1].length + 1,
+        column: this.column + lines[lines.length - 1].length + 1,
       };
     }
   }

@@ -1,6 +1,11 @@
-import { CharStreams, CommonTokenStream, Recognizer, Token } from "antlr4ts";
-import { ATNSimulator } from "antlr4ts/atn/ATNSimulator";
-import { AST } from "prettier";
+import {
+  type ATNSimulator,
+  BaseErrorListener,
+  CharStream,
+  CommonTokenStream,
+  type Recognizer,
+  Token,
+} from "antlr4ng";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 import {
   HtmlCdataNode,
@@ -49,12 +54,12 @@ export class ParserException extends Error {
   constructor(
     token: VelocityToken,
     mode: string,
-    recognizer: Recognizer<unknown, ATNSimulator>,
+    recognizer: Recognizer<ATNSimulator>,
     msg?: string
   ) {
-    const tokenName =
+    const tokenName: string | number =
       recognizer != null
-        ? recognizer.vocabulary.getDisplayName(token.type)
+        ? recognizer.vocabulary.getDisplayName(token.type) ?? token.type
         : token.type;
     super(
       interpolateErrorMsg(
@@ -82,30 +87,26 @@ type LexerMode =
   | "VelocityMode"
   | "AttributeStringMode";
 
-export default function parse(
-  text: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  parsers: unknown,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  options: unknown
-): AST {
-  const inputStream = CharStreams.fromString(text);
+export default function parse(text: string): RootNode {
+  const inputStream = CharStream.fromString(text);
   const lexer = new VelocityHtmlLexer(inputStream);
   const tokenFactory = new VelocityTokenFactory(lexer);
   lexer.tokenFactory = tokenFactory;
   const errors: Error[] = [];
   lexer.removeErrorListeners();
-  lexer.addErrorListener({
-    syntaxError(
-      recognizer: Recognizer<Token, ATNSimulator>,
-      offendingSymbol: unknown,
-      line: unknown,
-      charPositionInLine: unknown,
-      msg: string
-    ) {
-      errors.push(new Error(msg));
-    },
-  });
+  lexer.addErrorListener(
+    new (class extends BaseErrorListener {
+      public override syntaxError(
+        _recognizer: Recognizer<ATNSimulator>,
+        _offendingSymbol: unknown,
+        _line: number,
+        _column: number,
+        msg: string
+      ): void {
+        errors.push(new Error(msg));
+      }
+    })()
+  );
   const tokenStream = new CommonTokenStream(lexer);
   tokenStream.fill();
 
@@ -258,7 +259,7 @@ export default function parse(
             mode = "AttributeLhsMode";
             break;
           }
-          case VelocityHtmlLexer.EOF: {
+          case Token.EOF: {
             break;
           }
           case VelocityHtmlLexer.TAG_END: {
