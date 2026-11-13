@@ -92,12 +92,25 @@ function decorate(doc: Doc | Doc[], node: DecoratedNode | undefined): Doc {
   ];
 }
 
+const isTagPath = (
+  path: AstPath<ParserNode>
+): path is AstPath<HtmlTagNode> => path.node instanceof HtmlTagNode;
+
+const isChildrenPath = (
+  path: AstPath<ParserNode>
+): path is AstPath<AnyNodeWithChildren> => path.node instanceof NodeWithChildren
+
 export function printOpeningTag(
   node: HtmlTagNode,
   path: AstPath<ParserNode>,
   print: (path: AstPath) => Doc
 ): Doc {
-  const printedAttributes: Doc[] = path.map(print, "attributes");
+  if (!isTagPath(path)) throw new Error("printOpeningTag requires an HtmlTagNode path");
+
+  const printedAttributes: Doc[] = path.map(
+    print,
+    "attributes"
+  );
   const tagOpenParts: Doc[] = [
     decorateStart(node.startNode),
     `<${node.tagName}`,
@@ -239,11 +252,11 @@ function breakClosingTag(parent: AnyNodeWithChildren): boolean {
  * [
  *   group(fill("<span>Hello,World!</span>"))
  *   group([
- * line,
- * group([
- * group(fill("<span>")),
- * group(fill("Hello, World!")
- * ])
+ *     line,
+ *     group([
+ *       group(fill("<span>")),
+ *       group(fill("Hello, World!")
+ *     ])
  *   ])
  * ]
  * vs
@@ -251,8 +264,8 @@ function breakClosingTag(parent: AnyNodeWithChildren): boolean {
  *   group(fill("<span>Hello,World!</span>")),
  *   line,
  *   group([
- * group(fill("<span>")),
- * group(fill("Hello, World!")
+ *     group(fill("<span>")),
+ *     group(fill("Hello, World!")
  *   ])
  * ]
  *
@@ -264,6 +277,8 @@ function printChildren(
   options: ParserOptions,
   print: (path: AstPath) => Doc
 ): Doc[] {
+  if (!isChildrenPath(path)) throw new Error("printChildren requires a node with children");
+  
   return path.map((childPath) => {
     const childNode = childPath.node;
     const parts: Doc[] = [];

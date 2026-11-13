@@ -1,5 +1,5 @@
 import { doc as prettierDoc } from "prettier";
-import type { AstPath, Doc, Options, ParserOptions } from "prettier";
+import type { AstPath, Doc, Options, Printer } from "prettier";
 import {
   AttributeNode,
   HtmlTagNode,
@@ -12,7 +12,7 @@ import { concatChildren, printClosingTag, printOpeningTag } from "./printer";
 
 const { breakParent, group } = prettierDoc.builders;
 
-type TextToDoc = (text: string, options: Options) => Promise<Doc>;
+type TextToDoc = (text: string, options: Options) => Promise<Doc>;  
 
 const CSS_PARSER_OPTIONS = {
   parser: "css",
@@ -25,15 +25,12 @@ const JS_PARSER_OPTIONS = {
   __babelSourceType: "script",
 } as Options;
 
-export const embed = (
-  path: AstPath<ParserNode>,
-  _options: ParserOptions<ParserNode>
-) => {
+export const embed: NonNullable<Printer<ParserNode>["embed"]> = (path, _options) => {
   const node = path.node;
 
   if (node instanceof AttributeNode) {
     if (node.name !== "style" || node.value.length === 0) {
-      return undefined;
+      return null;
     }
     return async (textToDoc: TextToDoc): Promise<Doc> => {
       const styleDoc = await textToDoc(node.unescapedValue, CSS_PARSER_OPTIONS);
@@ -90,7 +87,7 @@ export const embed = (
     };
   }
 
-  return undefined;
+  return null;
 };
 
 function inferParserOptions(node: HtmlTagNode): Options | null {

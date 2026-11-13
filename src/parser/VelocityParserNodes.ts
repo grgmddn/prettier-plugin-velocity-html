@@ -14,7 +14,7 @@ export type AnyNodeWithChildren = NodeWithChildren<
 
 // TODO Nested conditional comment
 export class DecoratedNode {
-  public _revealedConditionalCommentStart: VelocityToken | null;
+  public _revealedConditionalCommentStart: VelocityToken | null = null;
 
   public get revealedConditionalCommentStart(): VelocityToken | null {
     if (this instanceof NodeWithChildren) {
@@ -116,9 +116,12 @@ export abstract class ParserNode extends DecoratedNode {
   public get isLastChild(): boolean {
     return this.index == this.parent.children.length - 1;
   }
-  private _parent: AnyNodeWithChildren;
+  private _parent: AnyNodeWithChildren | undefined;
 
   public get parent(): AnyNodeWithChildren {
+    if (this._parent === undefined) {
+      throw new Error("Node has not been attached to a parent");
+    }
     return this._parent;
   }
 
@@ -345,6 +348,7 @@ export class WhitespaceToken {
     this.text = token.textValue;
     this.isWhitespaceOnly = token.isWhitespaceOnly;
     this.line = token.line;
+    this.column = token.startLocation.column;
     this.type = type;
   }
 }
@@ -507,6 +511,18 @@ export class HtmlTagNode extends NodeWithChildren<
   NodeWithChildrenDecoration,
   NodeWithChildrenDecoration
 > {
+
+  private static readonly DEFAULT_RENDER_DEFINITION: Required<RenderDefinition> =
+    Object.freeze({
+      siblingsMode: RenderMode.INLINE,
+      childrenMode: RenderMode.INLINE,
+      forceBreak: false,
+      forceBreakChildren: false,
+      forceClose: false,
+      preformatted: false,
+      selfClosing: false,
+    });
+
   public getSiblingsRenderMode(): RenderMode {
     return this.renderDefinition.siblingsMode;
   }
@@ -515,11 +531,11 @@ export class HtmlTagNode extends NodeWithChildren<
     return this.renderDefinition.childrenMode;
   }
 
-  private renderDefinition: Required<RenderDefinition>;
-  private _tagName: string;
-  public isSelfClosing: boolean;
+  private renderDefinition: Required<RenderDefinition> = HtmlTagNode.DEFAULT_RENDER_DEFINITION;
+  private _tagName = "";
+  public isSelfClosing = false;
   public _attributes: HtmlAttributesNode;
-  public forceCloseTag: boolean;
+  public forceCloseTag = false;
 
   public constructor(public token: VelocityToken) {
     super(token);
@@ -604,15 +620,7 @@ export class HtmlTagNode extends NodeWithChildren<
     //   ...renderDefinition,
     // };
     if (renderDefinition == null) {
-      this.renderDefinition = {
-        siblingsMode: RenderMode.INLINE,
-        childrenMode: RenderMode.INLINE,
-        forceBreak: false,
-        forceBreakChildren: false,
-        forceClose: false,
-        preformatted: false,
-        selfClosing: false,
-      };
+      this.renderDefinition = HtmlTagNode.DEFAULT_RENDER_DEFINITION
     } else {
       this.renderDefinition = {
         siblingsMode: renderDefinition.siblingsMode,
@@ -721,7 +729,7 @@ export class HtmlCloseNode extends NodeWithChildren<
   NodeWithChildrenDecoration,
   NodeWithChildrenDecoration
 > {
-  public tagName: string;
+  public tagName = "";
 
   public getSiblingsRenderMode(): RenderMode {
     return RenderMode.BLOCK;
