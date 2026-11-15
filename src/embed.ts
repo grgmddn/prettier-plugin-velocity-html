@@ -1,10 +1,11 @@
 import { doc as prettierDoc } from "prettier";
 import type { AstPath, Doc, Options, Printer } from "prettier";
+import type {
+  ParserNode} from "./parser/VelocityParserNodes";
 import {
   AttributeNode,
   HtmlTagNode,
   HtmlTextNode,
-  ParserNode,
   VelocityDirectiveNode,
   VelocityReferenceNode,
 } from "./parser/VelocityParserNodes";

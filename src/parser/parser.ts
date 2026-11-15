@@ -7,6 +7,10 @@ import {
   Token,
 } from "antlr4ng";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
+import type {
+  ParserNode,
+  DecoratedNode,
+  AnyNodeWithChildren} from "./VelocityParserNodes";
 import {
   HtmlCdataNode,
   HtmlCloseNode,
@@ -16,19 +20,16 @@ import {
   HtmlTextNode,
   IeConditionalCommentNode,
   NodeWithChildrenDecoration,
-  ParserNode,
-  DecoratedNode,
   RootNode,
   VelocityDirectiveNode,
   VelocityCommentNode,
   VelocityReferenceNode,
-  AnyNodeWithChildren,
   NodeWithChildren,
   VelocityDirectiveEndNode,
   AttributeNode,
   AttributeValueToken,
 } from "./VelocityParserNodes";
-import { VelocityToken } from "./VelocityToken";
+import type { VelocityToken } from "./VelocityToken";
 import { VelocityTokenFactory } from "./VelocityTokenFactory";
 
 const interpolateErrorMsg = (msg: string, tokenName: string, mode: string) => {
@@ -112,7 +113,7 @@ export default function parse(text: string): RootNode {
 
   const rootNode = new RootNode();
   const parentStack: AnyNodeWithChildren[] = [rootNode];
-  const tokens: VelocityToken[] = tokenStream.getTokens() as VelocityToken[];
+  const tokens = tokenStream.getTokens() as VelocityToken[];
   let currentNode: ParserNode = rootNode;
   let currentHtmlAttribute: AttributeNode | null = null;
 

@@ -1,22 +1,22 @@
+import { RootNode, type ParserNode } from "./parser/VelocityParserNodes";
 import {
   HtmlCloseNode,
   HtmlTextNode,
-  NodeWithChildren,
-  ParserNode,
-  RootNode,
+  NodeWithChildren
 } from "./parser/VelocityParserNodes";
 
-import { Options } from "prettier";
+import type { Options } from "prettier";
 
 const PREPROCESS_PIPELINE: ((ast: RootNode, options: Options) => void)[] = [
   extractWhitespaces,
   // cleanVoidNodes,
 ];
 
-export function preprocess(ast: RootNode, options: Options): RootNode {
-  for (const fn of PREPROCESS_PIPELINE) {
-    fn(ast, options);
+export function preprocess(ast: ParserNode, options: Options): ParserNode {
+  if (!(ast instanceof RootNode)) {
+    throw new Error("Expected RootNode as the parser result");
   }
+  for (const fn of PREPROCESS_PIPELINE) fn(ast, options);
   return ast;
 }
 

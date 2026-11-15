@@ -1,6 +1,6 @@
 // This is the library entry point
 import type { Plugin } from "prettier";
-import type { ParserNode, RootNode } from "./parser/VelocityParserNodes";
+import type { ParserNode } from "./parser/VelocityParserNodes";
 import parseVelocityHtml from "./parser/parser";
 import { preprocess } from "./preprocess";
 import { embed } from "./embed";
@@ -15,16 +15,15 @@ const plugin: Plugin<ParserNode> = {
     "velocity-html": {
       parse: parseVelocityHtml,
       astFormat: "velocity-html-ast",
-      locStart: (node) => node.startLocation.line,
-      locEnd: (node) => (node.endLocation != null ? node.endLocation.line : 0),
+      locStart: (node) => node.startOffset,
+      locEnd: (node) => node.endOffset,
     },
   },
   printers: {
-    // TODO No preprocess in types?
     "velocity-html-ast": {
       print: printer,
       embed,
-      preprocess: (ast, options) => preprocess(ast as RootNode, options),
+      preprocess: (ast, options) => preprocess(ast, options),
       getVisitorKeys: (node: object) =>
         VISITOR_KEYS.filter((key) => key in node),
     },

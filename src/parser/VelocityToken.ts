@@ -14,10 +14,10 @@ export function isCollapsibleWhitespaceOnly(text: string): boolean {
 
 export const NEWLINE_REGEX = /\r\n|\r|\n/;
 
-// Both are 1-based
 export interface SourceCodeLocation {
-  line: number;
-  column: number;
+  line: number;    // 1-based
+  column: number;  // 1-based
+  offset: number;  // 0-based UTF-16 index into the original text (end is exclusive)
 }
 
 // Mirrors the (protected) CommonToken constructor argument.
@@ -35,6 +35,8 @@ export interface VelocityTokenDetails {
 
 export class VelocityToken extends CommonToken {
   public isInsideString = false;
+
+  public utf16Start?: number;
 
   public constructor(details: VelocityTokenDetails) {
     super(details);
@@ -67,22 +69,20 @@ export class VelocityToken extends CommonToken {
     return {
       line: this.line,
       column: this.column + 1,
+      offset: this.utf16Start ?? this.start,
     };
   }
 
   get endLocation(): SourceCodeLocation {
+    const offset = this.startLocation.offset + this.textValue.length; // exclusive
     const lines = this.textValue.split(NEWLINE_REGEX);
-    if (lines.length == 1) {
-      return {
-        line: this.line,
-        column: this.column + this.textValue.length + 1,
-      };
-    } else {
-      return {
-        line: this.line + (lines.length - 1),
-        column: this.column + lines[lines.length - 1].length + 1,
-      };
-    }
+    return lines.length == 1
+      ? { line: this.line, column: this.column + this.textValue.length + 1, offset }
+      : {
+          line: this.line + (lines.length - 1),
+          column: this.column + lines[lines.length - 1].length + 1, // unchanged from the original
+          offset,
+        };
   }
 
   get textValue(): string {

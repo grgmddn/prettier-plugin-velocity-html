@@ -1,5 +1,5 @@
 import { CommonTokenFactory, type CharStream, type TokenSource } from "antlr4ng";
-import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
+import type { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 import { VelocityToken } from "./VelocityToken";
 
 export class VelocityTokenFactory extends CommonTokenFactory {

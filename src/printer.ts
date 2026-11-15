@@ -1,9 +1,13 @@
 import { doc as prettierDoc } from "prettier";
 import type { AstPath, Doc, ParserOptions } from "prettier";
 import { RenderMode } from "./parser/tagRegistry";
+import type {
+  DecoratedNode,
+  ParserNode,
+  AnyNodeWithChildren,
+  WhitespaceToken} from "./parser/VelocityParserNodes";
 import {
   AttributeNode,
-  DecoratedNode,
   HtmlCdataNode,
   HtmlCloseNode,
   HtmlCommentNode,
@@ -12,13 +16,10 @@ import {
   HtmlTextNode,
   IeConditionalCommentNode,
   NodeWithChildren,
-  ParserNode,
-  AnyNodeWithChildren,
   RootNode,
   VelocityCommentNode,
   VelocityDirectiveNode,
-  VelocityReferenceNode,
-  WhitespaceToken,
+  VelocityReferenceNode
 } from "./parser/VelocityParserNodes";
 import { NEWLINE_REGEX } from "./parser/VelocityToken";
 

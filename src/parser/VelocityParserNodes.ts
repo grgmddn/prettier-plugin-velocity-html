@@ -1,9 +1,11 @@
-import {
-  isCollapsibleWhitespaceOnly,
+import type {
   SourceCodeLocation,
-  VelocityToken,
+  VelocityToken} from "./VelocityToken";
+import {
+  isCollapsibleWhitespaceOnly
 } from "./VelocityToken";
-import { RenderDefinition, RenderMode, tagRegistry } from "./tagRegistry";
+import type { RenderDefinition} from "./tagRegistry";
+import { RenderMode, tagRegistry } from "./tagRegistry";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 
 // TODO Maybe overwrite get startNode().
@@ -75,6 +77,16 @@ export abstract class ParserNode extends DecoratedNode {
         : this._endLocation;
     }
     return this._endLocation;
+  }
+
+  // 0-based UTF-16 offset of the first character of this node in the original text (inclusive).
+  public get startOffset(): number {
+    return this.startLocation.offset;
+  }
+
+  // 0-based UTF-16 offset after the last character of this node in the original text (exclusive).
+  public get endOffset(): number {
+    return this.endLocation.offset;
   }
 
   public _isPreformatted = false;
@@ -292,6 +304,9 @@ export class RootNode extends NodeWithChildren<
   NullDecoratedNode,
   NullDecoratedNode
 > {
+  // Length of the original text in UTF-16 code units. Set by parse().
+  public textLength = 0;
+
   public getSiblingsRenderMode(): RenderMode {
     return RenderMode.BLOCK;
   }
@@ -309,6 +324,14 @@ export class RootNode extends NodeWithChildren<
 
   public get endLocation(): SourceCodeLocation {
     throw new Error("Root node has no end location");
+  }
+
+  public get startOffset(): number {
+    return 0;
+  }
+
+  public get endOffset(): number {
+    return this.textLength;
   }
 
   public get parent(): AnyNodeWithChildren {
@@ -344,11 +367,17 @@ export class WhitespaceToken {
   public isWhitespaceOnly: boolean;
   public line: number;
   public column: number;
+  // 0-based UTF-16 offset of the first character (inclusive).
+  public startOffset: number;
+  // 0-based UTF-16 offset after the last character (exclusive).
+  public endOffset: number;
   constructor(token: VelocityToken, type: WhitespaceTokenType = "text") {
     this.text = token.textValue;
     this.isWhitespaceOnly = token.isWhitespaceOnly;
     this.line = token.line;
     this.column = token.startLocation.column;
+    this.startOffset = token.startLocation.offset;
+    this.endOffset = token.endLocation.offset;
     this.type = type;
   }
 }
@@ -393,6 +422,8 @@ export class HtmlTextNode extends ParserNode {
           {
             line: this.startLocation.line,
             column: this.startLocation.column,
+            startOffset: this.startLocation.offset,
+            endOffset: this.endLocation.offset,
             isWhitespaceOnly: true,
             text: " ",
             type: "text",
@@ -455,10 +486,17 @@ export class HtmlTextNode extends ParserNode {
       startIndexFn(numberOfTailingWhitespaceTokens),
       numberOfTailingWhitespaceTokens
     );
-    this._endLocation = this.tokens[this.tokens.length - 1];
+    const firstToken = this.tokens[0];
+    const lastToken = this.tokens[this.tokens.length - 1];
+    this._endLocation = {
+      line: lastToken.line,
+      column: lastToken.column,
+      offset: lastToken.endOffset,
+    };
     this._startLocation = {
-      line: this.tokens[0].line,
-      column: this.tokens[0].column,
+      line: firstToken.line,
+      column: firstToken.column,
+      offset: firstToken.startOffset,
     };
     return numberOfTailingWhitespaceTokens > 0;
   }
@@ -591,7 +629,7 @@ export class HtmlTagNode extends NodeWithChildren<
   /**
    * HTML comments were used to hide JS from browsers that don't support it.
    * The babel parser screws up the formatting. For example
-   * <!--         #include( "client-storage/local-storage-read.js" )         //
+   * <!-- #include( "client-storage/local-storage-read.js" ) //
    *  -->
    * Instead of
    * <!--
@@ -740,11 +778,11 @@ export class HtmlCloseNode extends NodeWithChildren<
     /**
      * Always break children of close nodes to improve readability:
      * <!--[if lt IE 9]><td></td></td>
-     *        </tr>
+     * </tr>
      * To break this, we have to force the break into the first children group:
      * <!--[if lt IE 9]>
-     *          <td></td></td>
-     *        </tr>
+     * <td></td></td>
+     * </tr>
      */
     this._forceBreakChildren = true;
     // TODO This should be endNode
