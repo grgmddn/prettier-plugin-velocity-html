@@ -33,7 +33,10 @@
     "generate": "node -e \"require('fs').rmSync('src/parser/generated',{recursive:true,force:true})\" && antlr-ng -Dlanguage=TypeScript --exact-output-dir -o src/parser/generated src/parser/VelocityHtmlLexer.g4",
     "build": "npm run generate && tsdown",
     "check": "tsc --noEmit",
-    "test": "npm run build && node --import tsx --test \"test/**/*.test.ts\""
+    "test": "npm run build && node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "oxlint src",
+    "lint:test": "oxlint test",
+    "lint:fix": "oxlint --fix src"
   },
   "repository": {
     "type": "git",
@@ -50,9 +53,10 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pngjs": "^6.0.5",
-    "@typescript/typescript6": "^6.0.2",
     "antlr-ng": "^1.0.10",
     "antlr4ng": "^3.0.16",
+    "oxlint": "^1.93.0",
+    "oxlint-tsgolint": "^7.0.2007",
     "pixelmatch": "^8.0.0",
     "playwright": "^1.65.0",
     "pngjs": "^7.0.0",
