@@ -1,7 +1,8 @@
 import { doc as prettierDoc } from "prettier";
 import type { AstPath, Doc, Options, Printer } from "prettier";
 import type {
-  ParserNode} from "./parser/VelocityParserNodes";
+  ParserNode
+} from "./parser/VelocityParserNodes";
 import {
   AttributeNode,
   HtmlTagNode,
@@ -60,7 +61,7 @@ export const embed: NonNullable<Printer<ParserNode>["embed"]> = (path, _options)
           }
           return child.tokens.map((token) => token.textValue).join("");
         } else {
-          throw new Error(`Unexpected type ${child.toString()}`);
+          throw new Error(`Unexpected child type in <${node.tagName}>: ${child.constructor.name}`);
         }
       })
       .join(preformatted ? "" : " ");

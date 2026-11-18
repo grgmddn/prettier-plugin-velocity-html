@@ -76,7 +76,7 @@ export class VelocityToken extends CommonToken {
   get endLocation(): SourceCodeLocation {
     const offset = this.startLocation.offset + this.textValue.length; // exclusive
     const lines = this.textValue.split(NEWLINE_REGEX);
-    return lines.length == 1
+    return lines.length === 1
       ? { line: this.line, column: this.column + this.textValue.length + 1, offset }
       : {
           line: this.line + (lines.length - 1),

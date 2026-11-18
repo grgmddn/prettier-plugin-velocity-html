@@ -96,11 +96,11 @@ export abstract class ParserNode extends DecoratedNode {
   }
 
   public get isInlineRenderMode(): boolean {
-    return this.getSiblingsRenderMode() == RenderMode.INLINE;
+    return this.getSiblingsRenderMode() === RenderMode.INLINE;
   }
 
   public get isBlockRenderMode(): boolean {
-    return this.getSiblingsRenderMode() == RenderMode.BLOCK;
+    return this.getSiblingsRenderMode() === RenderMode.BLOCK;
   }
 
   constructor(startToken: VelocityToken) {
@@ -123,10 +123,10 @@ export abstract class ParserNode extends DecoratedNode {
     return this.parent.children.indexOf(this);
   }
   public get isFirstChild(): boolean {
-    return this.index == 0;
+    return this.index === 0;
   }
   public get isLastChild(): boolean {
-    return this.index == this.parent.children.length - 1;
+    return this.index === this.parent.children.length - 1;
   }
   private _parent: AnyNodeWithChildren | undefined;
 
@@ -142,7 +142,7 @@ export abstract class ParserNode extends DecoratedNode {
   }
 
   public get isOnlyChild(): boolean {
-    return this.parent.children.length == 1;
+    return this.parent.children.length === 1;
   }
 
   public walk(
@@ -311,7 +311,8 @@ export class RootNode extends NodeWithChildren<
     return RenderMode.BLOCK;
   }
   public constructor() {
-    super({} as any);
+    // TODO: make optional in ParserNode constructor and remove the cast
+    super({} as VelocityToken);
   }
 
   public get isSelfOrParentPreformatted(): boolean {
@@ -540,8 +541,8 @@ export class HtmlAttributesNode extends NodeWithChildren<
   NullDecoratedNode
 > {
   constructor() {
-    // TODO
-    super({} as any);
+    // TODO: make optional in ParserNode constructor and remove the cast
+    super({} as VelocityToken);
   }
 }
 
@@ -860,8 +861,8 @@ export class VelocityDirectiveNode extends NodeWithChildren<
       }
       const nextRenderMode =
         next != null ? next.getSiblingsRenderMode() : RenderMode.BLOCK;
-      return prevRenderMode == RenderMode.INLINE ||
-        nextRenderMode == RenderMode.INLINE
+      return prevRenderMode === RenderMode.INLINE ||
+        nextRenderMode === RenderMode.INLINE
         ? RenderMode.INLINE
         : RenderMode.BLOCK;
     }
@@ -880,7 +881,7 @@ export class VelocityDirectiveNode extends NodeWithChildren<
     super(token);
     let renderDefinition: VelocityRenderDefinition | undefined;
 
-    if (token.type != VelocityHtmlLexer.VTL_MACRO_WITH_BODY_START) {
+    if (token.type !== VelocityHtmlLexer.VTL_MACRO_WITH_BODY_START) {
       const directiveWithoutSpaces = token.textValue.replace(/ \t/g, "");
       // TODO #set with space and tab.
       this.directive = directiveWithoutSpaces.substring(
@@ -904,7 +905,7 @@ export class VelocityDirectiveNode extends NodeWithChildren<
           siblingsMode: RenderMode.INLINE,
         };
       }
-      if (token.type != VelocityHtmlLexer.VTL_DIRECTIVE_START) {
+      if (token.type !== VelocityHtmlLexer.VTL_DIRECTIVE_START) {
         renderDefinition.hasVelocityCode = false;
       }
     } else {
@@ -958,7 +959,7 @@ export class VelocityReferenceNode extends ParserNode {
   constructor(token: VelocityToken) {
     super(token);
     this.isFormalReference =
-      token.textValue.charAt(1) == "{" || token.textValue.charAt(2) == "{";
+      token.textValue.charAt(1) === "{" || token.textValue.charAt(2) === "{";
     this._tokens.push(token);
   }
 

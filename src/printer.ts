@@ -148,7 +148,7 @@ export function printClosingTag(node: HtmlTagNode): Doc {
 }
 
 export function concatChildren(node: ParserNode, children: Doc[] | Doc): Doc {
-  if (children == "" || (children instanceof Array && children.length == 0)) {
+  if (children === "" || (children instanceof Array && children.length === 0)) {
     return "";
   }
   const firstChild = node instanceof NodeWithChildren ? node.children[0] : null;
@@ -201,9 +201,9 @@ function calculateDifferenceBetweenChildren(
   sameLineDoc: Doc
 ): Doc {
   const lineDifference = next.startLocation.line - prev.endLocation.line;
-  if (lineDifference == 0) {
+  if (lineDifference === 0) {
     return sameLineDoc;
-  } else if (lineDifference == 1) {
+  } else if (lineDifference === 1) {
     return hardline;
   } else {
     return [hardline, hardline];
@@ -213,7 +213,7 @@ function calculateDifferenceBetweenChildren(
 function breakOpeningTag(parent: AnyNodeWithChildren): boolean {
   return (
     (parent instanceof HtmlTagNode
-      ? parent.getChildrenRenderMode() == RenderMode.INLINE
+      ? parent.getChildrenRenderMode() === RenderMode.INLINE
       : parent.isInlineRenderMode) &&
     parent.firstChild != null &&
     parent.firstChild.isInlineRenderMode &&
@@ -224,7 +224,7 @@ function breakOpeningTag(parent: AnyNodeWithChildren): boolean {
 function breakClosingTag(parent: AnyNodeWithChildren): boolean {
   return (
     (parent instanceof HtmlTagNode
-      ? parent.getChildrenRenderMode() == RenderMode.INLINE
+      ? parent.getChildrenRenderMode() === RenderMode.INLINE
       : parent.isInlineRenderMode) &&
     parent.endNode != null &&
     parent.lastChild != null &&
@@ -488,7 +488,7 @@ export default function print(
       let prettierIgnoreMode = false;
       node.tokens.forEach((token: WhitespaceToken, index: number) => {
         let doc: Doc;
-        if (token.type == "prettierIgnore") {
+        if (token.type === "prettierIgnore") {
           prettierIgnoreMode = true;
           doc = [
             token.text.trimRight(),
@@ -515,17 +515,13 @@ export default function print(
           // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           throw new Error(`Unknown whitespace token type ${token.type}`);
         }
-        // TODO Hacky
-        // Every second entry must be line. Cannot have two strings following each other.
+        // Fill expects alternating content/separator entries, so two adjacent strings must be merged into one.
         const lastPart: Doc | undefined = parts[parts.length - 1];
         if (
-          typeof doc == "string" &&
-          lastPart != null &&
-          typeof lastPart == "string"
+          typeof doc === "string" &&
+          typeof lastPart === "string"
         ) {
-          parts[parts.length - 1] = `${parts[
-            parts.length - 1
-          ].toString()}${doc}`;
+          parts[parts.length - 1] = lastPart + doc;
         } else {
           parts.push(doc);
         }
@@ -551,7 +547,7 @@ export default function print(
   } else if (node instanceof HtmlDocTypeNode) {
     // Lowercase root element
     const types = node.types
-      .map((type, index) => (index == 0 ? type.toLowerCase() : type))
+      .map((type, index) => (index === 0 ? type.toLowerCase() : type))
       .join(" ");
     return decorate(group([group([`<!DOCTYPE ${types}`]), ">"]), node);
   } else if (node instanceof IeConditionalCommentNode) {
@@ -567,7 +563,7 @@ export default function print(
       concatChildren(node, printChildren(path, options, print)),
       breakParent,
       // Children are always preceeded by softline to make indent work.
-      node.isFirstChild && node.children.length == 0 ? softline : "",
+      node.isFirstChild && node.children.length === 0 ? softline : "",
       `</${node.tagName}>`,
     ];
   } else if (node instanceof VelocityDirectiveNode) {
@@ -576,11 +572,11 @@ export default function print(
     const preChildrenParts = [`#`];
 
     const inlineChildren = doInlineChildren(node);
-    if (node.formalMode || (inlineChildren && node.directive == "else")) {
+    if (node.formalMode || (inlineChildren && node.directive === "else")) {
       preChildrenParts.push("{");
     }
     preChildrenParts.push(node.directive);
-    if (node.formalMode || (inlineChildren && node.directive == "else")) {
+    if (node.formalMode || (inlineChildren && node.directive === "else")) {
       preChildrenParts.push("}");
     }
     if (node.hasVelocityCode) {

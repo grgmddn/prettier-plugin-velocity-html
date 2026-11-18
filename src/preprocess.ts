@@ -1,6 +1,5 @@
 import { RootNode, type ParserNode } from "./parser/VelocityParserNodes";
 import {
-  HtmlCloseNode,
   HtmlTextNode,
   NodeWithChildren
 } from "./parser/VelocityParserNodes";
@@ -21,7 +20,7 @@ export function preprocess(ast: ParserNode, options: Options): ParserNode {
 }
 
 function extractWhitespaces(ast: RootNode): void {
-  ast.walk((node, index, nodes) => {
+  ast.walk((node) => {
     if (node instanceof NodeWithChildren) {
       node.children = node.children.reduce(
         (newChildren, child, childIndex, children) => {
@@ -30,26 +29,29 @@ function extractWhitespaces(ast: RootNode): void {
               child.trimWhitespace();
 
               const previousSibling = children[childIndex - 1];
-
-              previousSibling != null &&
-                (previousSibling.hasTrailingSpaces = child.hasLeadingSpaces);
+              if (previousSibling != null) {
+                previousSibling.hasTrailingSpaces = child.hasLeadingSpaces;
+              }
 
               if (child.isFirstChild && child.parent.startNode == null) {
                 const previousNode = child.parent.prev;
-                previousNode != null &&
-                  (previousNode.hasTrailingSpaces = child.hasLeadingSpaces);
+                if (previousNode != null) {
+                  previousNode.hasTrailingSpaces = child.hasLeadingSpaces;
+                }
               }
 
               const nextSibling = children[childIndex + 1];
-              nextSibling != null &&
-                (nextSibling.hasLeadingSpaces = child.hasTrailingSpaces);
+              if (nextSibling != null) {
+                nextSibling.hasLeadingSpaces = child.hasTrailingSpaces;
+              }
 
               if (child.isLastChild && child.parent.endNode == null) {
                 const nextNode = child.parent.next;
-                nextNode != null &&
-                  (nextNode.hasLeadingSpaces = child.hasTrailingSpaces);
+                if (nextNode != null) {
+                  nextNode.hasLeadingSpaces = child.hasTrailingSpaces;
+                }
               }
-              if (child.text == "") {
+              if (child.text === "") {
                 return newChildren;
               } else {
                 return [...newChildren, child];

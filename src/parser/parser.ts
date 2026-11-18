@@ -178,7 +178,7 @@ export default function parse(text: string): RootNode {
           popParentStack();
         }
 
-        if (mode == "AttributeStringMode") {
+        if (mode === "AttributeStringMode") {
           // Handled in AttributeRhsMode
           break;
         }
@@ -268,7 +268,7 @@ export default function parse(text: string): RootNode {
               .substring(2, token.textValue.length - 1)
               .trim();
             if (currentNode instanceof HtmlTagNode) {
-              if (currentNode.tagName.toLowerCase() != tagName.toLowerCase()) {
+              if (currentNode.tagName.toLowerCase() !== tagName.toLowerCase()) {
                 throw newParserException(
                   `Tag was opened with ${currentNode.tagName}, but closed with ${tagName}. Mixed tags are not supported.`
                 );
@@ -397,7 +397,7 @@ export default function parse(text: string): RootNode {
 
         if (
           prettierIgnore.length > 0 &&
-          token.type != VelocityHtmlLexer.PRETTIER_IGNORE
+          token.type !== VelocityHtmlLexer.PRETTIER_IGNORE
         ) {
           let lastNode: ParserNode | undefined = parentStack[0].lastChild;
           lastNode =
@@ -420,7 +420,7 @@ export default function parse(text: string): RootNode {
 
         if (
           revealedConditionalComment != null &&
-          token.type != VelocityHtmlLexer.IE_REVEALED_COMMENT_START
+          token.type !== VelocityHtmlLexer.IE_REVEALED_COMMENT_START
         ) {
           /**
            * Attach to the last node:
@@ -451,7 +451,7 @@ export default function parse(text: string): RootNode {
               lastNode = lastNode.endNode as NodeWithChildrenDecoration;
             }
           }
-          if (token.type == VelocityHtmlLexer.IE_REVEALED_COMMENT_CLOSE) {
+          if (token.type === VelocityHtmlLexer.IE_REVEALED_COMMENT_CLOSE) {
             lastNode.revealedConditionalCommentEnd = revealedConditionalComment;
           } else {
             lastNode.revealedConditionalCommentStart =
@@ -501,7 +501,7 @@ export default function parse(text: string): RootNode {
             currentNode.endToken = token;
             const isSelfClosing =
               currentNode.isSelfClosing ||
-              token.type == VelocityHtmlLexer.SELF_CLOSING_TAG_CLOSE;
+              token.type === VelocityHtmlLexer.SELF_CLOSING_TAG_CLOSE;
             currentNode.isSelfClosing = isSelfClosing;
             if (isSelfClosing) {
               popParentStack();
@@ -545,7 +545,7 @@ export default function parse(text: string): RootNode {
         }
         switch (token.type) {
           case VelocityHtmlLexer.HTML_STRING_END: {
-            if (currentHtmlAttribute.value.length == 0) {
+            if (currentHtmlAttribute.value.length === 0) {
               currentHtmlAttribute.value.push(
                 new AttributeValueToken("", false)
               );
@@ -609,13 +609,13 @@ export default function parse(text: string): RootNode {
           case VelocityHtmlLexer.VTL_PARENS_CLOSE:
           case VelocityHtmlLexer.VTL_INDEX_CLOSE:
           case VelocityHtmlLexer.VTL_FORMAL_CLOSE: {
-            if (velocityModeStack.length == 0) {
+            if (velocityModeStack.length === 0) {
               throw newParserException("Velocity mode stack is empty");
             }
             velocityModeNode.addToken(token);
             mode = velocityModeStack.pop()!;
             if (
-              velocityModeStack.length == 0 &&
+              velocityModeStack.length === 0 &&
               !velocityModeNode.hasChildren
             ) {
               currentNode = parentStack[0];
