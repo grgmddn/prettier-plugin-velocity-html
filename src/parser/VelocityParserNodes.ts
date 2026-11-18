@@ -627,7 +627,7 @@ export class HtmlTagNode extends NodeWithChildren<
   /**
    * HTML comments were used to hide JS from browsers that don't support it.
    * The babel parser screws up the formatting. For example
-   * <!-- #include( "client-storage/local-storage-read.js" ) //
+   * <!--         #include( "client-storage/local-storage-read.js" )         //
    *  -->
    * Instead of
    * <!--
@@ -776,11 +776,11 @@ export class HtmlCloseNode extends NodeWithChildren<
     /**
      * Always break children of close nodes to improve readability:
      * <!--[if lt IE 9]><td></td></td>
-     * </tr>
+     *        </tr>
      * To break this, we have to force the break into the first children group:
      * <!--[if lt IE 9]>
-     * <td></td></td>
-     * </tr>
+     *          <td></td></td>
+     *        </tr>
      */
     this._forceBreakChildren = true;
     // TODO This should be endNode
