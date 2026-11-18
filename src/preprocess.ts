@@ -1,8 +1,5 @@
 import { RootNode, type ParserNode } from "./parser/VelocityParserNodes";
-import {
-  HtmlTextNode,
-  NodeWithChildren
-} from "./parser/VelocityParserNodes";
+import { HtmlTextNode, NodeWithChildren } from "./parser/VelocityParserNodes";
 
 import type { Options } from "prettier";
 
@@ -60,7 +57,7 @@ function extractWhitespaces(ast: RootNode): void {
           }
           return [...newChildren, child];
         },
-        [] as ParserNode[]
+        [] as ParserNode[],
       );
     }
   });

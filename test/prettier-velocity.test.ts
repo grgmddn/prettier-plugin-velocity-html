@@ -10,7 +10,7 @@ import {
   prepareScreenshotFolder,
   readTestcaseFile,
   shouldRunScreenshotTests,
-  isAllowedFileExtension
+  isAllowedFileExtension,
 } from "./testUtils";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,7 +44,8 @@ suite("prettier-velocity", () => {
 
     /* Check textual equality: always runs. */
     test(`should format ${testCaseName} (textual)`, async () => {
-      const [template, expectedOutput, options] = readTestcaseFile(testCasePath);
+      const [template, expectedOutput, options] =
+        readTestcaseFile(testCasePath);
       const formattedTemplate = await formatVelocity(template, options);
       assert.strictEqual(formattedTemplate, expectedOutput);
     });

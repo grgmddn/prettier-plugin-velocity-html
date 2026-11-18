@@ -1,8 +1,6 @@
 import { doc as prettierDoc } from "prettier";
 import type { AstPath, Doc, Options, Printer } from "prettier";
-import type {
-  ParserNode
-} from "./parser/VelocityParserNodes";
+import type { ParserNode } from "./parser/VelocityParserNodes";
 import {
   AttributeNode,
   HtmlTagNode,
@@ -14,7 +12,7 @@ import { concatChildren, printClosingTag, printOpeningTag } from "./printer";
 
 const { breakParent, group } = prettierDoc.builders;
 
-type TextToDoc = (text: string, options: Options) => Promise<Doc>;  
+type TextToDoc = (text: string, options: Options) => Promise<Doc>;
 
 const CSS_PARSER_OPTIONS = {
   parser: "css",
@@ -27,7 +25,10 @@ const JS_PARSER_OPTIONS = {
   __babelSourceType: "script",
 } as Options;
 
-export const embed: NonNullable<Printer<ParserNode>["embed"]> = (path, _options) => {
+export const embed: NonNullable<Printer<ParserNode>["embed"]> = (
+  path,
+  _options,
+) => {
   const node = path.node;
 
   if (node instanceof AttributeNode) {
@@ -57,11 +58,15 @@ export const embed: NonNullable<Printer<ParserNode>["embed"]> = (path, _options)
           child instanceof VelocityDirectiveNode
         ) {
           if (!preformatted) {
-            throw new Error("Node is not preformatted, but has velocity nodes.");
+            throw new Error(
+              "Node is not preformatted, but has velocity nodes.",
+            );
           }
           return child.tokens.map((token) => token.textValue).join("");
         } else {
-          throw new Error(`Unexpected child type in <${node.tagName}>: ${child.constructor.name}`);
+          throw new Error(
+            `Unexpected child type in <${node.tagName}>: ${child.constructor.name}`,
+          );
         }
       })
       .join(preformatted ? "" : " ");
@@ -74,7 +79,7 @@ export const embed: NonNullable<Printer<ParserNode>["embed"]> = (path, _options)
     return async (
       textToDoc: TextToDoc,
       print: (path: AstPath) => Doc,
-      callbackPath: AstPath<ParserNode>
+      callbackPath: AstPath<ParserNode>,
     ): Promise<Doc> => {
       const body =
         formatOptions != null

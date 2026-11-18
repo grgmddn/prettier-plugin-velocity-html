@@ -10,7 +10,8 @@ import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 import type {
   ParserNode,
   DecoratedNode,
-  AnyNodeWithChildren} from "./VelocityParserNodes";
+  AnyNodeWithChildren,
+} from "./VelocityParserNodes";
 import {
   HtmlCdataNode,
   HtmlCloseNode,
@@ -40,7 +41,7 @@ const interpolateErrorMsg = (msg: string, tokenName: string, mode: string) => {
   return Object.entries(ctx).reduce((interpolatedMsg, [key, value]) => {
     return interpolatedMsg.replace(
       new RegExp(`{{\\w*${key}\\w*}}`, "g"),
-      value
+      value,
     );
   }, msg);
 };
@@ -56,18 +57,18 @@ export class ParserException extends Error {
     token: VelocityToken,
     mode: string,
     recognizer: Recognizer<ATNSimulator>,
-    msg?: string
+    msg?: string,
   ) {
     const tokenName: string | number =
       recognizer != null
-        ? recognizer.vocabulary.getDisplayName(token.type) ?? token.type
+        ? (recognizer.vocabulary.getDisplayName(token.type) ?? token.type)
         : token.type;
     super(
       interpolateErrorMsg(
         msg != null ? msg : `Unexpected token <{{tokenName}}> in mode {{mode}}`,
         tokenName.toString(),
-        mode
-      )
+        mode,
+      ),
     );
     this.loc = {
       start: {
@@ -102,11 +103,11 @@ export default function parse(text: string): RootNode {
         _offendingSymbol: unknown,
         _line: number,
         _column: number,
-        msg: string
+        msg: string,
       ): void {
         errors.push(new Error(msg));
       }
-    })()
+    })(),
   );
   const tokenStream = new CommonTokenStream(lexer);
   tokenStream.fill();
@@ -197,7 +198,7 @@ export default function parse(text: string): RootNode {
           }
           default: {
             throw newParserException(
-              `Velocity Directive not supported at this position in mode ${mode}.`
+              `Velocity Directive not supported at this position in mode ${mode}.`,
             );
           }
         }
@@ -243,7 +244,7 @@ export default function parse(text: string): RootNode {
             lastChild.addText(token);
           } else {
             (currentNode as AnyNodeWithChildren).addChild(
-              new HtmlTextNode(token)
+              new HtmlTextNode(token),
             );
           }
         };
@@ -270,7 +271,7 @@ export default function parse(text: string): RootNode {
             if (currentNode instanceof HtmlTagNode) {
               if (currentNode.tagName.toLowerCase() !== tagName.toLowerCase()) {
                 throw newParserException(
-                  `Tag was opened with ${currentNode.tagName}, but closed with ${tagName}. Mixed tags are not supported.`
+                  `Tag was opened with ${currentNode.tagName}, but closed with ${tagName}. Mixed tags are not supported.`,
                 );
               }
               currentNode.endNode = new NodeWithChildrenDecoration();
@@ -410,7 +411,7 @@ export default function parse(text: string): RootNode {
           if (lastNode == null) {
             // TODO Add as normal comment node?
             throw newParserException(
-              `Cannot attach prettier ignore. No last child.`
+              `Cannot attach prettier ignore. No last child.`,
             );
           }
 
@@ -440,7 +441,7 @@ export default function parse(text: string): RootNode {
               : currentNode;
           if (lastNode == null) {
             throw newParserException(
-              `Cannot attach conditional comment. No last child.`
+              `Cannot attach conditional comment. No last child.`,
             );
           }
 
@@ -465,14 +466,12 @@ export default function parse(text: string): RootNode {
         switch (token.type) {
           case VelocityHtmlLexer.HTML_NAME:
           case VelocityHtmlLexer.HTML_STRING: {
-            if (
-              !(
-                currentNode instanceof HtmlTagNode ||
-                currentNode instanceof VelocityDirectiveNode
-              )
-            ) {
+            if (!(
+              currentNode instanceof HtmlTagNode ||
+              currentNode instanceof VelocityDirectiveNode
+            )) {
               throw newParserException(
-                "Current node not a html tag node or velocity directive node"
+                "Current node not a html tag node or velocity directive node",
               );
             }
             if (
@@ -547,7 +546,7 @@ export default function parse(text: string): RootNode {
           case VelocityHtmlLexer.HTML_STRING_END: {
             if (currentHtmlAttribute.value.length === 0) {
               currentHtmlAttribute.value.push(
-                new AttributeValueToken("", false)
+                new AttributeValueToken("", false),
               );
             }
             addAttributeNode();

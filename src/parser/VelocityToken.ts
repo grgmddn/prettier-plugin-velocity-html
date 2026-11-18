@@ -15,9 +15,9 @@ export function isCollapsibleWhitespaceOnly(text: string): boolean {
 export const NEWLINE_REGEX = /\r\n|\r|\n/;
 
 export interface SourceCodeLocation {
-  line: number;    // 1-based
-  column: number;  // 1-based
-  offset: number;  // 0-based UTF-16 index into the original text (end is exclusive)
+  line: number; // 1-based
+  column: number; // 1-based
+  offset: number; // 0-based UTF-16 index into the original text (end is exclusive)
 }
 
 // Mirrors the (protected) CommonToken constructor argument.
@@ -47,7 +47,7 @@ export class VelocityToken extends CommonToken {
     if (this.isInsideString) {
       stringRepresentation = stringRepresentation.replace(
         "]",
-        ", insideString]"
+        ", insideString]",
       );
     }
     return stringRepresentation;
@@ -77,7 +77,11 @@ export class VelocityToken extends CommonToken {
     const offset = this.startLocation.offset + this.textValue.length; // exclusive
     const lines = this.textValue.split(NEWLINE_REGEX);
     return lines.length === 1
-      ? { line: this.line, column: this.column + this.textValue.length + 1, offset }
+      ? {
+          line: this.line,
+          column: this.column + this.textValue.length + 1,
+          offset,
+        }
       : {
           line: this.line + (lines.length - 1),
           column: this.column + lines[lines.length - 1].length + 1, // unchanged from the original

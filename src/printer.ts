@@ -5,7 +5,8 @@ import type {
   DecoratedNode,
   ParserNode,
   AnyNodeWithChildren,
-  WhitespaceToken} from "./parser/VelocityParserNodes";
+  WhitespaceToken,
+} from "./parser/VelocityParserNodes";
 import {
   AttributeNode,
   HtmlCdataNode,
@@ -19,7 +20,7 @@ import {
   RootNode,
   VelocityCommentNode,
   VelocityDirectiveNode,
-  VelocityReferenceNode
+  VelocityReferenceNode,
 } from "./parser/VelocityParserNodes";
 import { NEWLINE_REGEX } from "./parser/VelocityToken";
 
@@ -62,7 +63,7 @@ function escapeDoubleQuote(text: string): string {
 
 function printRevealedConditionalComment(
   text: string,
-  trimWhitespace = true
+  trimWhitespace = true,
 ): string {
   return (trimWhitespace ? text.trim() : text)
     .replace(/\s+/g, " ")
@@ -72,7 +73,7 @@ function printRevealedConditionalComment(
 function decorateStart(node: DecoratedNode | undefined): Doc {
   return node != null && node.revealedConditionalCommentStart != null
     ? printRevealedConditionalComment(
-        node.revealedConditionalCommentStart.textValue
+        node.revealedConditionalCommentStart.textValue,
       )
     : "";
 }
@@ -80,7 +81,7 @@ function decorateStart(node: DecoratedNode | undefined): Doc {
 function decorateEnd(node: DecoratedNode | undefined): Doc {
   return node != null && node.revealedConditionalCommentEnd != null
     ? printRevealedConditionalComment(
-        node.revealedConditionalCommentEnd.textValue
+        node.revealedConditionalCommentEnd.textValue,
       )
     : "";
 }
@@ -93,25 +94,23 @@ function decorate(doc: Doc | Doc[], node: DecoratedNode | undefined): Doc {
   ];
 }
 
-const isTagPath = (
-  path: AstPath<ParserNode>
-): path is AstPath<HtmlTagNode> => path.node instanceof HtmlTagNode;
+const isTagPath = (path: AstPath<ParserNode>): path is AstPath<HtmlTagNode> =>
+  path.node instanceof HtmlTagNode;
 
 const isChildrenPath = (
-  path: AstPath<ParserNode>
-): path is AstPath<AnyNodeWithChildren> => path.node instanceof NodeWithChildren
+  path: AstPath<ParserNode>,
+): path is AstPath<AnyNodeWithChildren> =>
+  path.node instanceof NodeWithChildren;
 
 export function printOpeningTag(
   node: HtmlTagNode,
   path: AstPath<ParserNode>,
-  print: (path: AstPath) => Doc
+  print: (path: AstPath) => Doc,
 ): Doc {
-  if (!isTagPath(path)) throw new Error("printOpeningTag requires an HtmlTagNode path");
+  if (!isTagPath(path))
+    throw new Error("printOpeningTag requires an HtmlTagNode path");
 
-  const printedAttributes: Doc[] = path.map(
-    print,
-    "attributes"
-  );
+  const printedAttributes: Doc[] = path.map(print, "attributes");
   const tagOpenParts: Doc[] = [
     decorateStart(node.startNode),
     `<${node.tagName}`,
@@ -125,7 +124,7 @@ export function printOpeningTag(
     tagOpenParts.push(
       node.attributes.length > 0 ? softline : "",
       ">",
-      decorateEnd(node.startNode)
+      decorateEnd(node.startNode),
     );
   }
 
@@ -173,7 +172,7 @@ export function concatChildren(node: ParserNode, children: Doc[] | Doc): Doc {
       // Try to keep nodes with text on one line to improve readability.
       node.children.reduce(
         (acc, child) => acc && !(child instanceof HtmlTextNode),
-        true
+        true,
       ) &&
       firstChild.startLocation.line > node.startLocation.line);
   return [
@@ -198,7 +197,7 @@ export function concatChildren(node: ParserNode, children: Doc[] | Doc): Doc {
 function calculateDifferenceBetweenChildren(
   prev: ParserNode,
   next: ParserNode,
-  sameLineDoc: Doc
+  sameLineDoc: Doc,
 ): Doc {
   const lineDifference = next.startLocation.line - prev.endLocation.line;
   if (lineDifference === 0) {
@@ -276,10 +275,11 @@ function breakClosingTag(parent: AnyNodeWithChildren): boolean {
 function printChildren(
   path: AstPath<ParserNode>,
   options: ParserOptions,
-  print: (path: AstPath) => Doc
+  print: (path: AstPath) => Doc,
 ): Doc[] {
-  if (!isChildrenPath(path)) throw new Error("printChildren requires a node with children");
-  
+  if (!isChildrenPath(path))
+    throw new Error("printChildren requires a node with children");
+
   return path.map((childPath) => {
     const childNode = childPath.node;
     const parts: Doc[] = [];
@@ -336,7 +336,7 @@ function printChildren(
           lineBreak = calculateDifferenceBetweenChildren(
             prev,
             childNode,
-            hardline
+            hardline,
           );
         } else if (
           prev.isInlineRenderMode &&
@@ -368,7 +368,7 @@ function printChildren(
         const seperator = calculateDifferenceBetweenChildren(
           childNode,
           next,
-          hardline
+          hardline,
         );
         if (next.isInlineRenderMode && childNode.isBlockRenderMode) {
           parts[parts.length - 1] = group([parts[parts.length - 1], seperator]);
@@ -398,7 +398,7 @@ function printChildren(
     ) {
       parts.push(
         decorateStart(childNode.parent?.endNode),
-        `</${parent.tagName}`
+        `</${parent.tagName}`,
       );
     }
 
@@ -409,7 +409,7 @@ function printChildren(
 export default function print(
   path: AstPath<ParserNode>,
   options: ParserOptions,
-  print: (path: AstPath) => Doc
+  print: (path: AstPath) => Doc,
 ): Doc {
   const node: ParserNode = path.node;
 
@@ -417,14 +417,14 @@ export default function print(
     const lines = options.originalText.split(NEWLINE_REGEX);
     const textLines = lines.slice(
       node.prettierIgnore[0].startLocation.line - 1,
-      node.endLocation.line
+      node.endLocation.line,
     );
     textLines[0] = textLines[0].substr(
-      node.prettierIgnore[0].startLocation.column - 1
+      node.prettierIgnore[0].startLocation.column - 1,
     );
     textLines[textLines.length - 1] = textLines[textLines.length - 1].substr(
       0,
-      node.endLocation.column
+      node.endLocation.column,
     );
     /**
      * Replicate prettiers algorithm:
@@ -454,7 +454,7 @@ export default function print(
     if (node.value.length > 0) {
       const value = node.value
         .map((token) =>
-          token.escapeQuotes ? escapeDoubleQuote(token.text) : token.text
+          token.escapeQuotes ? escapeDoubleQuote(token.text) : token.text,
         )
         .join("");
       if (node.name === "class") {
@@ -499,8 +499,8 @@ export default function print(
             ...(token.text.endsWith("-->")
               ? []
               : token.text.split(NEWLINE_REGEX).length > 2
-              ? [hardline, hardline]
-              : [hardline]),
+                ? [hardline, hardline]
+                : [hardline]),
           ];
         } else if (prettierIgnoreMode) {
           doc = token.text;
@@ -517,10 +517,7 @@ export default function print(
         }
         // Fill expects alternating content/separator entries, so two adjacent strings must be merged into one.
         const lastPart: Doc | undefined = parts[parts.length - 1];
-        if (
-          typeof doc === "string" &&
-          typeof lastPart === "string"
-        ) {
+        if (typeof doc === "string" && typeof lastPart === "string") {
           parts[parts.length - 1] = lastPart + doc;
         } else {
           parts.push(doc);
@@ -540,7 +537,7 @@ export default function print(
     }
     return decorate(
       isPreformatted ? dedentToRoot(fill(parts)) : fill(parts),
-      node
+      node,
     );
   } else if (node instanceof HtmlCommentNode) {
     return decorate([node.text], node);

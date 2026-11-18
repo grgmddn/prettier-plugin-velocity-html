@@ -13,7 +13,7 @@ import {
   readTestcaseFile,
   prepareScreenshotFolder,
   shouldRunScreenshotTests,
-  isAllowedFileExtension
+  isAllowedFileExtension,
 } from "./testUtils";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,26 +50,26 @@ suite("prettier", () => {
         await takeScreenshot!(
           page!,
           `${testCaseName}_velocity`,
-          "<p>foo<span>bar</span></p>"
+          "<p>foo<span>bar</span></p>",
         ),
         await takeScreenshot!(
           page!,
           `${testCaseName}_prettier`,
-          "<p>foo <span>bar</span></p>"
+          "<p>foo <span>bar</span></p>",
         ),
-        `${testCaseName}_diff`
+        `${testCaseName}_diff`,
       );
       assert.notEqual(mismatch, 0);
-    }
+    },
   );
 
   /* Invalid HTML: always runs (pure formatter check). */
   for (const testCaseName of fs.readdirSync(
-    resolve(__dirname, "parser/invalid_html")
+    resolve(__dirname, "parser/invalid_html"),
   )) {
     test(`should not process ${testCaseName}`, async () => {
       const [input, expectedOutput, options] = readTestcaseFile(
-        resolve(__dirname, "parser/invalid_html", testCaseName)
+        resolve(__dirname, "parser/invalid_html", testCaseName),
       );
 
       let threw = false;
@@ -90,14 +90,14 @@ suite("prettier", () => {
 
   /* Valid HTML: textual assertion always runs, screenshots run only when enabled. */
   for (const testCaseName of fs.readdirSync(
-    resolve(__dirname, "parser/valid_html")
+    resolve(__dirname, "parser/valid_html"),
   )) {
     if (!isAllowedFileExtension(testCaseName)) continue;
 
     /* Check textual equality: always runs. */
     test(`should format ${testCaseName} (textual)`, async () => {
       const [input, expectedOutput, options] = readTestcaseFile(
-        resolve(__dirname, "parser/valid_html", testCaseName)
+        resolve(__dirname, "parser/valid_html", testCaseName),
       );
 
       const formatted = await formatVelocity(input, options);
@@ -109,7 +109,7 @@ suite("prettier", () => {
       `should format ${testCaseName} (visual)`,
       async () => {
         const [input, expectedOutput, options] = readTestcaseFile(
-          resolve(__dirname, "parser/valid_html", testCaseName)
+          resolve(__dirname, "parser/valid_html", testCaseName),
         );
 
         const formatted = await formatVelocity(input, options);
@@ -117,8 +117,12 @@ suite("prettier", () => {
 
         const mismatchedPixels = compareScreenshots(
           await takeScreenshot!(page!, `${testCaseName}_velocity`, formatted),
-          await takeScreenshot!(page!, `${testCaseName}_prettier`, prettierFormatted),
-          `${testCaseName}_diff`
+          await takeScreenshot!(
+            page!,
+            `${testCaseName}_prettier`,
+            prettierFormatted,
+          ),
+          `${testCaseName}_diff`,
         );
 
         assert.strictEqual(
@@ -126,10 +130,10 @@ suite("prettier", () => {
           expectedOutput,
           `Expected does not match actual. Rendered output is equal to prettier? ${
             mismatchedPixels === 0
-          }`
+          }`,
         );
         assert.strictEqual(mismatchedPixels, 0);
-      }
+      },
     );
   }
 });

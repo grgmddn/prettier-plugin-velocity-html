@@ -1,10 +1,6 @@
-import type {
-  SourceCodeLocation,
-  VelocityToken} from "./VelocityToken";
-import {
-  isCollapsibleWhitespaceOnly
-} from "./VelocityToken";
-import type { RenderDefinition} from "./tagRegistry";
+import type { SourceCodeLocation, VelocityToken } from "./VelocityToken";
+import { isCollapsibleWhitespaceOnly } from "./VelocityToken";
+import type { RenderDefinition } from "./tagRegistry";
 import { RenderMode, tagRegistry } from "./tagRegistry";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 
@@ -146,7 +142,7 @@ export abstract class ParserNode extends DecoratedNode {
   }
 
   public walk(
-    fn: (node: ParserNode, index: number, array: ParserNode[]) => void
+    fn: (node: ParserNode, index: number, array: ParserNode[]) => void,
   ): void {
     fn(this, 0, [this]);
   }
@@ -197,7 +193,7 @@ export class NodeWithChildrenDecoration extends DecoratedNode {
 
 export abstract class NodeWithChildren<
   StartNode extends NodeWithChildrenDecoration,
-  EndNode extends NodeWithChildrenDecoration
+  EndNode extends NodeWithChildrenDecoration,
 > extends ParserNode {
   public children: ParserNode[] = [];
 
@@ -206,7 +202,7 @@ export abstract class NodeWithChildren<
   }
 
   public walk(
-    fn: (node: ParserNode, index: number, array: ParserNode[]) => void
+    fn: (node: ParserNode, index: number, array: ParserNode[]) => void,
   ): void {
     this.children.forEach((node) => {
       node.walk(fn);
@@ -250,7 +246,10 @@ export abstract class NodeWithChildren<
 }
 
 export class AttributeValueToken {
-  public constructor(public text: string, public escapeQuotes: boolean) {}
+  public constructor(
+    public text: string,
+    public escapeQuotes: boolean,
+  ) {}
 }
 
 export class AttributeNode extends ParserNode {
@@ -285,8 +284,8 @@ export class AttributeNode extends ParserNode {
     this._value.push(
       new AttributeValueToken(
         token.textValue,
-        token.type === VelocityHtmlLexer.HTML_STRING
-      )
+        token.type === VelocityHtmlLexer.HTML_STRING,
+      ),
     );
   }
 
@@ -359,9 +358,7 @@ export class RootNode extends NodeWithChildren<
 }
 
 export type WhitespaceTokenType =
-  | "text"
-  | "conditionalComment"
-  | "prettierIgnore";
+  "text" | "conditionalComment" | "prettierIgnore";
 export class WhitespaceToken {
   public text: string;
   public type: WhitespaceTokenType;
@@ -411,7 +408,7 @@ export class HtmlTextNode extends ParserNode {
           yield tokens[i];
         }
       })(),
-      (numberOfWhitespaceTokens) => tokens.length - numberOfWhitespaceTokens
+      (numberOfWhitespaceTokens) => tokens.length - numberOfWhitespaceTokens,
     );
   }
 
@@ -459,17 +456,17 @@ export class HtmlTextNode extends ParserNode {
           yield tokens[i];
         }
       })(),
-      () => 0
+      () => 0,
     );
   }
 
   private removeWhitespaceTokens(
     iterator: Generator<WhitespaceToken>,
-    startIndexFn: (numberOfWhitespaceTokens: number) => number
+    startIndexFn: (numberOfWhitespaceTokens: number) => number,
   ): boolean {
     if (this.isWhitespaceOnly) {
       throw new Error(
-        "Cannot remove whitespace tokens on whitespace only text. Result would be the empty string."
+        "Cannot remove whitespace tokens on whitespace only text. Result would be the empty string.",
       );
     }
     let numberOfTailingWhitespaceTokens = 0;
@@ -485,7 +482,7 @@ export class HtmlTextNode extends ParserNode {
     }
     this.tokens.splice(
       startIndexFn(numberOfTailingWhitespaceTokens),
-      numberOfTailingWhitespaceTokens
+      numberOfTailingWhitespaceTokens,
     );
     const firstToken = this.tokens[0];
     const lastToken = this.tokens[this.tokens.length - 1];
@@ -511,7 +508,7 @@ export class HtmlTextNode extends ParserNode {
       this.tokens.splice(
         this.tokens.length - 1,
         0,
-        new WhitespaceToken(token, "conditionalComment")
+        new WhitespaceToken(token, "conditionalComment"),
       );
     }
   }
@@ -531,7 +528,7 @@ export class HtmlTextNode extends ParserNode {
     this.tokens.splice(
       this.tokens.length - 1,
       0,
-      ...tokens.map((token) => new WhitespaceToken(token, "prettierIgnore"))
+      ...tokens.map((token) => new WhitespaceToken(token, "prettierIgnore")),
     );
   }
 }
@@ -550,7 +547,6 @@ export class HtmlTagNode extends NodeWithChildren<
   NodeWithChildrenDecoration,
   NodeWithChildrenDecoration
 > {
-
   private static readonly DEFAULT_RENDER_DEFINITION: Required<RenderDefinition> =
     Object.freeze({
       siblingsMode: RenderMode.INLINE,
@@ -570,7 +566,8 @@ export class HtmlTagNode extends NodeWithChildren<
     return this.renderDefinition.childrenMode;
   }
 
-  private renderDefinition: Required<RenderDefinition> = HtmlTagNode.DEFAULT_RENDER_DEFINITION;
+  private renderDefinition: Required<RenderDefinition> =
+    HtmlTagNode.DEFAULT_RENDER_DEFINITION;
   private _tagName = "";
   public isSelfClosing = false;
   public _attributes: HtmlAttributesNode;
@@ -587,12 +584,12 @@ export class HtmlTagNode extends NodeWithChildren<
     // TODO Typescript
     const typeAttribute = this._attributes.children.find(
       (attribute) =>
-        attribute instanceof AttributeNode && attribute.name === "type"
+        attribute instanceof AttributeNode && attribute.name === "type",
     ) as AttributeNode;
     const scriptType =
       typeAttribute != null ? typeAttribute.unescapedValue : undefined;
     return Object.keys(this.supportedScriptTypes).find((parser) =>
-      this.supportedScriptTypes[parser].includes(scriptType)
+      this.supportedScriptTypes[parser].includes(scriptType),
     );
   }
 
@@ -659,7 +656,7 @@ export class HtmlTagNode extends NodeWithChildren<
     //   ...renderDefinition,
     // };
     if (renderDefinition == null) {
-      this.renderDefinition = HtmlTagNode.DEFAULT_RENDER_DEFINITION
+      this.renderDefinition = HtmlTagNode.DEFAULT_RENDER_DEFINITION;
     } else {
       this.renderDefinition = {
         siblingsMode: renderDefinition.siblingsMode,
@@ -888,7 +885,7 @@ export class VelocityDirectiveNode extends NodeWithChildren<
         1,
         directiveWithoutSpaces.endsWith("(")
           ? directiveWithoutSpaces.length - 1
-          : directiveWithoutSpaces.length
+          : directiveWithoutSpaces.length,
       );
       if (this.directive.startsWith("{")) {
         this.formalMode = true;

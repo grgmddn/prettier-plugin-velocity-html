@@ -15,7 +15,7 @@ export const SCREENSHOT_FOLDER = path.join(
   process.cwd(),
   "dist",
   "test",
-  "screenshots"
+  "screenshots",
 );
 
 export const prepareScreenshotFolder = (): void => {
@@ -39,7 +39,7 @@ export const formatHtml = async (input: string): Promise<string> => {
 
 export const formatVelocity = async (
   input: string,
-  options: PrettierOptions | undefined
+  options: PrettierOptions | undefined,
 ): Promise<string> => {
   const plugin = await loadVelocityPlugin();
   return format(input, {
@@ -54,11 +54,11 @@ export interface TestOptions extends PrettierOptions {
 }
 
 export const readTestcaseFile = (
-  filePath: string
+  filePath: string,
 ): [string, string, TestOptions] => {
   let content = fs.readFileSync(filePath, "utf8");
   const parts = content.split(
-    "\n=====================================input======================================\n"
+    "\n=====================================input======================================\n",
   );
 
   let testOptions: TestOptions = {
@@ -75,12 +75,12 @@ export const readTestcaseFile = (
   }
 
   const [input, expectedOutput] = content.split(
-    "\n=====================================output=====================================\n"
+    "\n=====================================output=====================================\n",
   );
 
   if (expectedOutput === undefined) {
     throw new Error(
-      `File ${filePath} is not a valid testcase – missing output delimiter`
+      `File ${filePath} is not a valid testcase – missing output delimiter`,
     );
   }
 
@@ -95,7 +95,7 @@ export const isAllowedFileExtension = (fileName: string): boolean => {
 export const compareScreenshots = (
   path1: string,
   path2: string,
-  prefix: string
+  prefix: string,
 ): number => {
   const png1 = PNG.sync.read(fs.readFileSync(path1));
   const png2 = PNG.sync.read(fs.readFileSync(path2));
@@ -108,7 +108,7 @@ export const compareScreenshots = (
     diff.data,
     width,
     height,
-    { threshold: 0 }
+    { threshold: 0 },
   );
 
   const diffPath = path.join(SCREENSHOT_FOLDER, `${prefix}.png`);
@@ -120,14 +120,14 @@ export const compareScreenshots = (
 export const takeScreenshot = async (
   page: Page,
   prefix: string,
-  html: string
+  html: string,
 ): Promise<string> => {
   const htmlPath = path.join(SCREENSHOT_FOLDER, `${prefix}.html`);
   fs.writeFileSync(htmlPath, html);
   await page.goto(`file://${htmlPath}`);
 
   const tooLong = await page.evaluate(
-    "Math.max(document.body.offsetHeight, document.body.clientHeight, document.body.scrollHeight) > window.innerHeight"
+    "Math.max(document.body.offsetHeight, document.body.clientHeight, document.body.scrollHeight) > window.innerHeight",
   );
 
   if (html.includes("<video")) await sleep(2000);
