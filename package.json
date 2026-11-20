@@ -11,7 +11,7 @@
       "email": "f.v.claus@googlemail.com"
     }
   ],
-  "description": "Prettier plugin for formatting HTML containing Velocity code",
+  "description": "Prettier 3 plugin for formatting HTML containing Velocity code",
   "keywords": [
     "prettier",
     "prettier-plugin",
