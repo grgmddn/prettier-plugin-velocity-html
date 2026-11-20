@@ -1,7 +1,10 @@
 {
   "name": "@grgmddn/prettier-plugin-velocity-html",
   "version": "1.0.0",
-  "author": "",
+  "author": {
+    "name": "George Madden",
+    "url": "https://github.com/grgmddn"
+  },
   "contributors": [
     {
       "name": "Frederik Claus",
