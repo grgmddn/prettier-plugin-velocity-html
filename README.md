@@ -141,7 +141,6 @@ The plugin ships with its own HTML parser, tested against all relevant test case
 
 - Compatibility with Prettier v3.
 - Published as the scoped package `@grgmddn/prettier-plugin-velocity-html`.
-- ESM-only, Node.js `>=18`.
 - The hosted Playground has been removed.
 
 ## Contributing
