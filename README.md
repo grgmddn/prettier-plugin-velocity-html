@@ -139,9 +139,12 @@ The plugin ships with its own HTML parser, tested against all relevant test case
 
 ## What's different in this fork
 
-- Compatibility with Prettier v3.
+- Supports Prettier v3. Prettier 2 is no longer supported; use the [original package](https://www.npmjs.com/package/prettier-plugin-velocity-html) for v2.
+- Dual ESM/CJS builds, Node.js `>=18`.
+- No runtime dependencies.
 - Published as the scoped package `@grgmddn/prettier-plugin-velocity-html`.
 - The hosted Playground has been removed.
+- Parser generated with `antlr-ng`, built with `tsdown`, tested with `node:test`. Java is not required to generate the lexer.
 
 ## Contributing
 
