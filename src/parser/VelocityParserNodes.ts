@@ -1,9 +1,7 @@
-import {
-  isCollapsibleWhitespaceOnly,
-  SourceCodeLocation,
-  VelocityToken,
-} from "./VelocityToken";
-import { RenderDefinition, RenderMode, tagRegistry } from "./tagRegistry";
+import type { SourceCodeLocation, VelocityToken } from "./VelocityToken";
+import { isCollapsibleWhitespaceOnly } from "./VelocityToken";
+import type { RenderDefinition } from "./tagRegistry";
+import { RenderMode, tagRegistry } from "./tagRegistry";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
 
 // TODO Maybe overwrite get startNode().
@@ -14,7 +12,7 @@ export type AnyNodeWithChildren = NodeWithChildren<
 
 // TODO Nested conditional comment
 export class DecoratedNode {
-  public _revealedConditionalCommentStart: VelocityToken | null;
+  public _revealedConditionalCommentStart: VelocityToken | null = null;
 
   public get revealedConditionalCommentStart(): VelocityToken | null {
     if (this instanceof NodeWithChildren) {
@@ -77,6 +75,16 @@ export abstract class ParserNode extends DecoratedNode {
     return this._endLocation;
   }
 
+  // 0-based UTF-16 offset of the first character of this node in the original text (inclusive).
+  public get startOffset(): number {
+    return this.startLocation.offset;
+  }
+
+  // 0-based UTF-16 offset after the last character of this node in the original text (exclusive).
+  public get endOffset(): number {
+    return this.endLocation.offset;
+  }
+
   public _isPreformatted = false;
 
   public isPreformatted(): boolean {
@@ -84,11 +92,11 @@ export abstract class ParserNode extends DecoratedNode {
   }
 
   public get isInlineRenderMode(): boolean {
-    return this.getSiblingsRenderMode() == RenderMode.INLINE;
+    return this.getSiblingsRenderMode() === RenderMode.INLINE;
   }
 
   public get isBlockRenderMode(): boolean {
-    return this.getSiblingsRenderMode() == RenderMode.BLOCK;
+    return this.getSiblingsRenderMode() === RenderMode.BLOCK;
   }
 
   constructor(startToken: VelocityToken) {
@@ -111,14 +119,17 @@ export abstract class ParserNode extends DecoratedNode {
     return this.parent.children.indexOf(this);
   }
   public get isFirstChild(): boolean {
-    return this.index == 0;
+    return this.index === 0;
   }
   public get isLastChild(): boolean {
-    return this.index == this.parent.children.length - 1;
+    return this.index === this.parent.children.length - 1;
   }
-  private _parent: AnyNodeWithChildren;
+  private _parent: AnyNodeWithChildren | undefined;
 
   public get parent(): AnyNodeWithChildren {
+    if (this._parent === undefined) {
+      throw new Error("Node has not been attached to a parent");
+    }
     return this._parent;
   }
 
@@ -127,11 +138,11 @@ export abstract class ParserNode extends DecoratedNode {
   }
 
   public get isOnlyChild(): boolean {
-    return this.parent.children.length == 1;
+    return this.parent.children.length === 1;
   }
 
   public walk(
-    fn: (node: ParserNode, index: number, array: ParserNode[]) => void
+    fn: (node: ParserNode, index: number, array: ParserNode[]) => void,
   ): void {
     fn(this, 0, [this]);
   }
@@ -182,7 +193,7 @@ export class NodeWithChildrenDecoration extends DecoratedNode {
 
 export abstract class NodeWithChildren<
   StartNode extends NodeWithChildrenDecoration,
-  EndNode extends NodeWithChildrenDecoration
+  EndNode extends NodeWithChildrenDecoration,
 > extends ParserNode {
   public children: ParserNode[] = [];
 
@@ -191,7 +202,7 @@ export abstract class NodeWithChildren<
   }
 
   public walk(
-    fn: (node: ParserNode, index: number, array: ParserNode[]) => void
+    fn: (node: ParserNode, index: number, array: ParserNode[]) => void,
   ): void {
     this.children.forEach((node) => {
       node.walk(fn);
@@ -235,7 +246,10 @@ export abstract class NodeWithChildren<
 }
 
 export class AttributeValueToken {
-  public constructor(public text: string, public escapeQuotes: boolean) {}
+  public constructor(
+    public text: string,
+    public escapeQuotes: boolean,
+  ) {}
 }
 
 export class AttributeNode extends ParserNode {
@@ -270,8 +284,8 @@ export class AttributeNode extends ParserNode {
     this._value.push(
       new AttributeValueToken(
         token.textValue,
-        token.type === VelocityHtmlLexer.HTML_STRING
-      )
+        token.type === VelocityHtmlLexer.HTML_STRING,
+      ),
     );
   }
 
@@ -289,11 +303,15 @@ export class RootNode extends NodeWithChildren<
   NullDecoratedNode,
   NullDecoratedNode
 > {
+  // Length of the original text in UTF-16 code units. Set by parse().
+  public textLength = 0;
+
   public getSiblingsRenderMode(): RenderMode {
     return RenderMode.BLOCK;
   }
   public constructor() {
-    super({} as any);
+    // TODO: make optional in ParserNode constructor and remove the cast
+    super({} as VelocityToken);
   }
 
   public get isSelfOrParentPreformatted(): boolean {
@@ -306,6 +324,14 @@ export class RootNode extends NodeWithChildren<
 
   public get endLocation(): SourceCodeLocation {
     throw new Error("Root node has no end location");
+  }
+
+  public get startOffset(): number {
+    return 0;
+  }
+
+  public get endOffset(): number {
+    return this.textLength;
   }
 
   public get parent(): AnyNodeWithChildren {
@@ -332,19 +358,24 @@ export class RootNode extends NodeWithChildren<
 }
 
 export type WhitespaceTokenType =
-  | "text"
-  | "conditionalComment"
-  | "prettierIgnore";
+  "text" | "conditionalComment" | "prettierIgnore";
 export class WhitespaceToken {
   public text: string;
   public type: WhitespaceTokenType;
   public isWhitespaceOnly: boolean;
   public line: number;
   public column: number;
+  // 0-based UTF-16 offset of the first character (inclusive).
+  public startOffset: number;
+  // 0-based UTF-16 offset after the last character (exclusive).
+  public endOffset: number;
   constructor(token: VelocityToken, type: WhitespaceTokenType = "text") {
     this.text = token.textValue;
     this.isWhitespaceOnly = token.isWhitespaceOnly;
     this.line = token.line;
+    this.column = token.startLocation.column;
+    this.startOffset = token.startLocation.offset;
+    this.endOffset = token.endLocation.offset;
     this.type = type;
   }
 }
@@ -377,7 +408,7 @@ export class HtmlTextNode extends ParserNode {
           yield tokens[i];
         }
       })(),
-      (numberOfWhitespaceTokens) => tokens.length - numberOfWhitespaceTokens
+      (numberOfWhitespaceTokens) => tokens.length - numberOfWhitespaceTokens,
     );
   }
 
@@ -389,6 +420,8 @@ export class HtmlTextNode extends ParserNode {
           {
             line: this.startLocation.line,
             column: this.startLocation.column,
+            startOffset: this.startLocation.offset,
+            endOffset: this.endLocation.offset,
             isWhitespaceOnly: true,
             text: " ",
             type: "text",
@@ -423,17 +456,17 @@ export class HtmlTextNode extends ParserNode {
           yield tokens[i];
         }
       })(),
-      () => 0
+      () => 0,
     );
   }
 
   private removeWhitespaceTokens(
     iterator: Generator<WhitespaceToken>,
-    startIndexFn: (numberOfWhitespaceTokens: number) => number
+    startIndexFn: (numberOfWhitespaceTokens: number) => number,
   ): boolean {
     if (this.isWhitespaceOnly) {
       throw new Error(
-        "Cannot remove whitespace tokens on whitespace only text. Result would be the empty string."
+        "Cannot remove whitespace tokens on whitespace only text. Result would be the empty string.",
       );
     }
     let numberOfTailingWhitespaceTokens = 0;
@@ -449,12 +482,19 @@ export class HtmlTextNode extends ParserNode {
     }
     this.tokens.splice(
       startIndexFn(numberOfTailingWhitespaceTokens),
-      numberOfTailingWhitespaceTokens
+      numberOfTailingWhitespaceTokens,
     );
-    this._endLocation = this.tokens[this.tokens.length - 1];
+    const firstToken = this.tokens[0];
+    const lastToken = this.tokens[this.tokens.length - 1];
+    this._endLocation = {
+      line: lastToken.line,
+      column: lastToken.column,
+      offset: lastToken.endOffset,
+    };
     this._startLocation = {
-      line: this.tokens[0].line,
-      column: this.tokens[0].column,
+      line: firstToken.line,
+      column: firstToken.column,
+      offset: firstToken.startOffset,
     };
     return numberOfTailingWhitespaceTokens > 0;
   }
@@ -468,7 +508,7 @@ export class HtmlTextNode extends ParserNode {
       this.tokens.splice(
         this.tokens.length - 1,
         0,
-        new WhitespaceToken(token, "conditionalComment")
+        new WhitespaceToken(token, "conditionalComment"),
       );
     }
   }
@@ -488,7 +528,7 @@ export class HtmlTextNode extends ParserNode {
     this.tokens.splice(
       this.tokens.length - 1,
       0,
-      ...tokens.map((token) => new WhitespaceToken(token, "prettierIgnore"))
+      ...tokens.map((token) => new WhitespaceToken(token, "prettierIgnore")),
     );
   }
 }
@@ -498,8 +538,8 @@ export class HtmlAttributesNode extends NodeWithChildren<
   NullDecoratedNode
 > {
   constructor() {
-    // TODO
-    super({} as any);
+    // TODO: make optional in ParserNode constructor and remove the cast
+    super({} as VelocityToken);
   }
 }
 
@@ -507,6 +547,17 @@ export class HtmlTagNode extends NodeWithChildren<
   NodeWithChildrenDecoration,
   NodeWithChildrenDecoration
 > {
+  private static readonly DEFAULT_RENDER_DEFINITION: Required<RenderDefinition> =
+    Object.freeze({
+      siblingsMode: RenderMode.INLINE,
+      childrenMode: RenderMode.INLINE,
+      forceBreak: false,
+      forceBreakChildren: false,
+      forceClose: false,
+      preformatted: false,
+      selfClosing: false,
+    });
+
   public getSiblingsRenderMode(): RenderMode {
     return this.renderDefinition.siblingsMode;
   }
@@ -515,11 +566,12 @@ export class HtmlTagNode extends NodeWithChildren<
     return this.renderDefinition.childrenMode;
   }
 
-  private renderDefinition: Required<RenderDefinition>;
-  private _tagName: string;
-  public isSelfClosing: boolean;
+  private renderDefinition: Required<RenderDefinition> =
+    HtmlTagNode.DEFAULT_RENDER_DEFINITION;
+  private _tagName = "";
+  public isSelfClosing = false;
   public _attributes: HtmlAttributesNode;
-  public forceCloseTag: boolean;
+  public forceCloseTag = false;
 
   public constructor(public token: VelocityToken) {
     super(token);
@@ -532,12 +584,12 @@ export class HtmlTagNode extends NodeWithChildren<
     // TODO Typescript
     const typeAttribute = this._attributes.children.find(
       (attribute) =>
-        attribute instanceof AttributeNode && attribute.name === "type"
+        attribute instanceof AttributeNode && attribute.name === "type",
     ) as AttributeNode;
     const scriptType =
       typeAttribute != null ? typeAttribute.unescapedValue : undefined;
     return Object.keys(this.supportedScriptTypes).find((parser) =>
-      this.supportedScriptTypes[parser].includes(scriptType)
+      this.supportedScriptTypes[parser].includes(scriptType),
     );
   }
 
@@ -604,15 +656,7 @@ export class HtmlTagNode extends NodeWithChildren<
     //   ...renderDefinition,
     // };
     if (renderDefinition == null) {
-      this.renderDefinition = {
-        siblingsMode: RenderMode.INLINE,
-        childrenMode: RenderMode.INLINE,
-        forceBreak: false,
-        forceBreakChildren: false,
-        forceClose: false,
-        preformatted: false,
-        selfClosing: false,
-      };
+      this.renderDefinition = HtmlTagNode.DEFAULT_RENDER_DEFINITION;
     } else {
       this.renderDefinition = {
         siblingsMode: renderDefinition.siblingsMode,
@@ -721,7 +765,7 @@ export class HtmlCloseNode extends NodeWithChildren<
   NodeWithChildrenDecoration,
   NodeWithChildrenDecoration
 > {
-  public tagName: string;
+  public tagName = "";
 
   public getSiblingsRenderMode(): RenderMode {
     return RenderMode.BLOCK;
@@ -814,8 +858,8 @@ export class VelocityDirectiveNode extends NodeWithChildren<
       }
       const nextRenderMode =
         next != null ? next.getSiblingsRenderMode() : RenderMode.BLOCK;
-      return prevRenderMode == RenderMode.INLINE ||
-        nextRenderMode == RenderMode.INLINE
+      return prevRenderMode === RenderMode.INLINE ||
+        nextRenderMode === RenderMode.INLINE
         ? RenderMode.INLINE
         : RenderMode.BLOCK;
     }
@@ -834,14 +878,14 @@ export class VelocityDirectiveNode extends NodeWithChildren<
     super(token);
     let renderDefinition: VelocityRenderDefinition | undefined;
 
-    if (token.type != VelocityHtmlLexer.VTL_MACRO_WITH_BODY_START) {
+    if (token.type !== VelocityHtmlLexer.VTL_MACRO_WITH_BODY_START) {
       const directiveWithoutSpaces = token.textValue.replace(/ \t/g, "");
       // TODO #set with space and tab.
       this.directive = directiveWithoutSpaces.substring(
         1,
         directiveWithoutSpaces.endsWith("(")
           ? directiveWithoutSpaces.length - 1
-          : directiveWithoutSpaces.length
+          : directiveWithoutSpaces.length,
       );
       if (this.directive.startsWith("{")) {
         this.formalMode = true;
@@ -858,7 +902,7 @@ export class VelocityDirectiveNode extends NodeWithChildren<
           siblingsMode: RenderMode.INLINE,
         };
       }
-      if (token.type != VelocityHtmlLexer.VTL_DIRECTIVE_START) {
+      if (token.type !== VelocityHtmlLexer.VTL_DIRECTIVE_START) {
         renderDefinition.hasVelocityCode = false;
       }
     } else {
@@ -912,7 +956,7 @@ export class VelocityReferenceNode extends ParserNode {
   constructor(token: VelocityToken) {
     super(token);
     this.isFormalReference =
-      token.textValue.charAt(1) == "{" || token.textValue.charAt(2) == "{";
+      token.textValue.charAt(1) === "{" || token.textValue.charAt(2) === "{";
     this._tokens.push(token);
   }
 

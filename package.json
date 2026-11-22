@@ -1,92 +1,86 @@
 {
-  "name": "prettier-plugin-velocity-html",
-  "version": "1.0.2",
+  "name": "@grgmddn/prettier-plugin-velocity-html",
+  "version": "1.0.0",
   "author": {
-    "name": "Frederik Claus",
-    "email": "f.v.claus@googlemail.com"
+    "name": "George Madden",
+    "url": "https://github.com/grgmddn"
   },
-  "dependencies": {
-    "antlr4ts": "^0.5.0-alpha.4"
+  "contributors": [
+    {
+      "name": "Frederik Claus",
+      "email": "f.v.claus@googlemail.com"
+    }
+  ],
+  "description": "Prettier 3 plugin for formatting HTML containing Velocity code",
+  "keywords": [
+    "prettier",
+    "prettier-plugin",
+    "velocity"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
-    "node": "v14.15.5"
-  },
-  "license": "MIT",
-  "repository": "fvclaus/prettier-plugin-velocity-html",
-  "homepage": "https://prettier-plugin-velocity-html.herokuapp.com/",
-  "keywords": ["prettier", "velocity"],
-  "main": "index.js",
-  "devDependencies": {
-    "@babel/core": "^7.15.0",
-    "@types/chai": "^4.2.15",
-    "@types/commander": "^2.12.2",
-    "@types/fancy-log": "^1.3.1",
-    "@types/log4js": "^2.3.5",
-    "@types/mocha": "^8.2.1",
-    "@types/pixelmatch": "^5.2.3",
-    "@types/pngjs": "^6.0.0",
-    "@types/prettier": "^2.3.0",
-    "@types/temp": "^0.9.0",
-    "@typescript-eslint/eslint-plugin": "^4.16.1",
-    "@typescript-eslint/parser": "^4.16.1",
-    "antlr4ts-cli": "^0.5.0-alpha.4",
-    "chai": "^4.3.3",
-    "commander": "^7.2.0",
-    "copy-webpack-plugin": "^9.0.1",
-    "cross-spawn": "^7.0.3",
-    "del": "^6.0.0",
-    "dotup-ts-git-wrapper": "^1.0.0",
-    "editorconfig": "^0.15.3",
-    "eslint": "^7.21.0",
-    "eslint-config-prettier": "^8.1.0",
-    "eslint-plugin-deprecation": "^1.2.1",
-    "eslint-plugin-prettier": "^3.3.1",
-    "fancy-log": "^1.3.3",
-    "gh-pages": "^3.1.0",
-    "log4js": "^6.3.0",
-    "mocha": "^8.3.0",
-    "node-polyfill-webpack-plugin": "^1.1.4",
-    "pixelmatch": "^5.2.1",
-    "pngjs": "^6.0.0",
-    "prettier": "^2.3.2",
-    "prettier-plugin-java": "^1.2.0",
-    "rimraf": "^3.0.2",
-    "source-map-support": "^0.5.19",
-    "temp": "^0.9.4",
-    "ts-loader": "^9.2.0",
-    "ts-node": "^10.0.0",
-    "typedoc": "^0.20.29",
-    "typescript": "^4.2.2",
-    "webpack": "^5.43.0",
-    "webpack-cli": "^4.7.2",
-    "webpack-node-externals": "^3.0.0",
-    "webpack-shell-plugin-next": "^2.2.2",
-    "@babel/preset-env": "^7.14.9",
-    "@babel/preset-react": "7.12.13",
-    "@sandhose/prettier-animated-logo": "1.0.3",
-    "babel-loader": "8.2.2",
-    "html-webpack-plugin": "^5.3.2",
-    "js-yaml": "4.0.0",
-    "lz-string": "1.4.4",
-    "express": "^4.17.1",
-    "playwright": "^1.10.0",
-    "clipboard": "2.0.6",
-    "prop-types": "15.7.2",
-    "react": "17.0.1",
-    "react-dom": "17.0.1",
-    "webpack-dev-server": "^3.11.2"
+    "node": ">=18"
   },
   "scripts": {
-    "heroku-postbuild": "BUILD_STANDALONE=true npm run build:production",
-    "heroku-cleanup": "rimraf .jdk/ && rimraf node_modules/ && du -h -d 1",
-    "playground": "node dist/server.js",
-    "build:production": "rimraf dist/ && webpack --mode=production",
-    "build:development": "rimraf dist/ && webpack --mode=development",
-    "test": "npm run build:development && node --require source-map-support/register node_modules/mocha/bin/mocha dist/test/index.js --parallel --reporter spec --timeout 10000",
-    "npm-publish": "npm run build:production && cd dist/ && npm publish && echo 'Do not forget to tag with current version and push the tag'",
-    "lint": "eslint \"./**/*.ts\"",
-    "testrig": "npm run build:development && node --require source-map-support/register dist/tools/TestRig.js",
-    "testrig:html": "npm run testrig -- read-test-case --file tools/local/local-debug.html --doc --format --token",
-    "testrig:print-doc": "npm run testrig -- print-doc"
+    "generate": "node -e \"require('fs').rmSync('src/parser/generated',{recursive:true,force:true})\" && antlr-ng -Dlanguage=TypeScript --exact-output-dir -o src/parser/generated src/parser/VelocityHtmlLexer.g4",
+    "build": "npm run generate && tsdown",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --import tsx --test \"test/**/*.test.ts\"",
+    "lint": "oxlint src",
+    "lint:test": "oxlint test",
+    "lint:fix": "oxlint --fix src",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "verify": "npm run format:check && npm run lint && npm run check"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/grgmddn/prettier-plugin-velocity-html.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/grgmddn/prettier-plugin-velocity-html/issues"
+  },
+  "homepage": "https://github.com/grgmddn/prettier-plugin-velocity-html#readme",
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pngjs": "^6.0.5",
+    "antlr-ng": "^1.0.10",
+    "antlr4ng": "^3.0.16",
+    "oxlint": "^1.93.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "pixelmatch": "^8.0.0",
+    "playwright": "^1.65.0",
+    "pngjs": "^7.0.0",
+    "prettier": "^3.10.1",
+    "tsdown": "^0.23.7",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   }
 }

@@ -1,0 +1,6 @@
+dist
+node_modules
+src/parser/generated
+test/parser
+test/velocity-java
+package-lock.json

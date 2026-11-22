@@ -1,7 +1,17 @@
-import { CharStreams, CommonTokenStream, Recognizer, Token } from "antlr4ts";
-import { ATNSimulator } from "antlr4ts/atn/ATNSimulator";
-import { AST } from "prettier";
+import {
+  type ATNSimulator,
+  BaseErrorListener,
+  CharStream,
+  CommonTokenStream,
+  type Recognizer,
+  Token,
+} from "antlr4ng";
 import { VelocityHtmlLexer } from "./generated/VelocityHtmlLexer";
+import type {
+  ParserNode,
+  DecoratedNode,
+  AnyNodeWithChildren,
+} from "./VelocityParserNodes";
 import {
   HtmlCdataNode,
   HtmlCloseNode,
@@ -11,19 +21,16 @@ import {
   HtmlTextNode,
   IeConditionalCommentNode,
   NodeWithChildrenDecoration,
-  ParserNode,
-  DecoratedNode,
   RootNode,
   VelocityDirectiveNode,
   VelocityCommentNode,
   VelocityReferenceNode,
-  AnyNodeWithChildren,
   NodeWithChildren,
   VelocityDirectiveEndNode,
   AttributeNode,
   AttributeValueToken,
 } from "./VelocityParserNodes";
-import { VelocityToken } from "./VelocityToken";
+import type { VelocityToken } from "./VelocityToken";
 import { VelocityTokenFactory } from "./VelocityTokenFactory";
 
 const interpolateErrorMsg = (msg: string, tokenName: string, mode: string) => {
@@ -34,7 +41,7 @@ const interpolateErrorMsg = (msg: string, tokenName: string, mode: string) => {
   return Object.entries(ctx).reduce((interpolatedMsg, [key, value]) => {
     return interpolatedMsg.replace(
       new RegExp(`{{\\w*${key}\\w*}}`, "g"),
-      value
+      value,
     );
   }, msg);
 };
@@ -49,19 +56,19 @@ export class ParserException extends Error {
   constructor(
     token: VelocityToken,
     mode: string,
-    recognizer: Recognizer<unknown, ATNSimulator>,
-    msg?: string
+    recognizer: Recognizer<ATNSimulator>,
+    msg?: string,
   ) {
-    const tokenName =
+    const tokenName: string | number =
       recognizer != null
-        ? recognizer.vocabulary.getDisplayName(token.type)
+        ? (recognizer.vocabulary.getDisplayName(token.type) ?? token.type)
         : token.type;
     super(
       interpolateErrorMsg(
         msg != null ? msg : `Unexpected token <{{tokenName}}> in mode {{mode}}`,
         tokenName.toString(),
-        mode
-      )
+        mode,
+      ),
     );
     this.loc = {
       start: {
@@ -82,36 +89,32 @@ type LexerMode =
   | "VelocityMode"
   | "AttributeStringMode";
 
-export default function parse(
-  text: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  parsers: unknown,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  options: unknown
-): AST {
-  const inputStream = CharStreams.fromString(text);
+export default function parse(text: string): RootNode {
+  const inputStream = CharStream.fromString(text);
   const lexer = new VelocityHtmlLexer(inputStream);
   const tokenFactory = new VelocityTokenFactory(lexer);
   lexer.tokenFactory = tokenFactory;
   const errors: Error[] = [];
   lexer.removeErrorListeners();
-  lexer.addErrorListener({
-    syntaxError(
-      recognizer: Recognizer<Token, ATNSimulator>,
-      offendingSymbol: unknown,
-      line: unknown,
-      charPositionInLine: unknown,
-      msg: string
-    ) {
-      errors.push(new Error(msg));
-    },
-  });
+  lexer.addErrorListener(
+    new (class extends BaseErrorListener {
+      public override syntaxError(
+        _recognizer: Recognizer<ATNSimulator>,
+        _offendingSymbol: unknown,
+        _line: number,
+        _column: number,
+        msg: string,
+      ): void {
+        errors.push(new Error(msg));
+      }
+    })(),
+  );
   const tokenStream = new CommonTokenStream(lexer);
   tokenStream.fill();
 
   const rootNode = new RootNode();
   const parentStack: AnyNodeWithChildren[] = [rootNode];
-  const tokens: VelocityToken[] = tokenStream.getTokens() as VelocityToken[];
+  const tokens = tokenStream.getTokens() as VelocityToken[];
   let currentNode: ParserNode = rootNode;
   let currentHtmlAttribute: AttributeNode | null = null;
 
@@ -176,7 +179,7 @@ export default function parse(
           popParentStack();
         }
 
-        if (mode == "AttributeStringMode") {
+        if (mode === "AttributeStringMode") {
           // Handled in AttributeRhsMode
           break;
         }
@@ -195,7 +198,7 @@ export default function parse(
           }
           default: {
             throw newParserException(
-              `Velocity Directive not supported at this position in mode ${mode}.`
+              `Velocity Directive not supported at this position in mode ${mode}.`,
             );
           }
         }
@@ -241,7 +244,7 @@ export default function parse(
             lastChild.addText(token);
           } else {
             (currentNode as AnyNodeWithChildren).addChild(
-              new HtmlTextNode(token)
+              new HtmlTextNode(token),
             );
           }
         };
@@ -258,7 +261,7 @@ export default function parse(
             mode = "AttributeLhsMode";
             break;
           }
-          case VelocityHtmlLexer.EOF: {
+          case Token.EOF: {
             break;
           }
           case VelocityHtmlLexer.TAG_END: {
@@ -266,9 +269,9 @@ export default function parse(
               .substring(2, token.textValue.length - 1)
               .trim();
             if (currentNode instanceof HtmlTagNode) {
-              if (currentNode.tagName.toLowerCase() != tagName.toLowerCase()) {
+              if (currentNode.tagName.toLowerCase() !== tagName.toLowerCase()) {
                 throw newParserException(
-                  `Tag was opened with ${currentNode.tagName}, but closed with ${tagName}. Mixed tags are not supported.`
+                  `Tag was opened with ${currentNode.tagName}, but closed with ${tagName}. Mixed tags are not supported.`,
                 );
               }
               currentNode.endNode = new NodeWithChildrenDecoration();
@@ -395,7 +398,7 @@ export default function parse(
 
         if (
           prettierIgnore.length > 0 &&
-          token.type != VelocityHtmlLexer.PRETTIER_IGNORE
+          token.type !== VelocityHtmlLexer.PRETTIER_IGNORE
         ) {
           let lastNode: ParserNode | undefined = parentStack[0].lastChild;
           lastNode =
@@ -408,7 +411,7 @@ export default function parse(
           if (lastNode == null) {
             // TODO Add as normal comment node?
             throw newParserException(
-              `Cannot attach prettier ignore. No last child.`
+              `Cannot attach prettier ignore. No last child.`,
             );
           }
 
@@ -418,7 +421,7 @@ export default function parse(
 
         if (
           revealedConditionalComment != null &&
-          token.type != VelocityHtmlLexer.IE_REVEALED_COMMENT_START
+          token.type !== VelocityHtmlLexer.IE_REVEALED_COMMENT_START
         ) {
           /**
            * Attach to the last node:
@@ -438,7 +441,7 @@ export default function parse(
               : currentNode;
           if (lastNode == null) {
             throw newParserException(
-              `Cannot attach conditional comment. No last child.`
+              `Cannot attach conditional comment. No last child.`,
             );
           }
 
@@ -449,7 +452,7 @@ export default function parse(
               lastNode = lastNode.endNode as NodeWithChildrenDecoration;
             }
           }
-          if (token.type == VelocityHtmlLexer.IE_REVEALED_COMMENT_CLOSE) {
+          if (token.type === VelocityHtmlLexer.IE_REVEALED_COMMENT_CLOSE) {
             lastNode.revealedConditionalCommentEnd = revealedConditionalComment;
           } else {
             lastNode.revealedConditionalCommentStart =
@@ -463,14 +466,12 @@ export default function parse(
         switch (token.type) {
           case VelocityHtmlLexer.HTML_NAME:
           case VelocityHtmlLexer.HTML_STRING: {
-            if (
-              !(
-                currentNode instanceof HtmlTagNode ||
-                currentNode instanceof VelocityDirectiveNode
-              )
-            ) {
+            if (!(
+              currentNode instanceof HtmlTagNode ||
+              currentNode instanceof VelocityDirectiveNode
+            )) {
               throw newParserException(
-                "Current node not a html tag node or velocity directive node"
+                "Current node not a html tag node or velocity directive node",
               );
             }
             if (
@@ -499,7 +500,7 @@ export default function parse(
             currentNode.endToken = token;
             const isSelfClosing =
               currentNode.isSelfClosing ||
-              token.type == VelocityHtmlLexer.SELF_CLOSING_TAG_CLOSE;
+              token.type === VelocityHtmlLexer.SELF_CLOSING_TAG_CLOSE;
             currentNode.isSelfClosing = isSelfClosing;
             if (isSelfClosing) {
               popParentStack();
@@ -543,9 +544,9 @@ export default function parse(
         }
         switch (token.type) {
           case VelocityHtmlLexer.HTML_STRING_END: {
-            if (currentHtmlAttribute.value.length == 0) {
+            if (currentHtmlAttribute.value.length === 0) {
               currentHtmlAttribute.value.push(
-                new AttributeValueToken("", false)
+                new AttributeValueToken("", false),
               );
             }
             addAttributeNode();
@@ -607,13 +608,13 @@ export default function parse(
           case VelocityHtmlLexer.VTL_PARENS_CLOSE:
           case VelocityHtmlLexer.VTL_INDEX_CLOSE:
           case VelocityHtmlLexer.VTL_FORMAL_CLOSE: {
-            if (velocityModeStack.length == 0) {
+            if (velocityModeStack.length === 0) {
               throw newParserException("Velocity mode stack is empty");
             }
             velocityModeNode.addToken(token);
             mode = velocityModeStack.pop()!;
             if (
-              velocityModeStack.length == 0 &&
+              velocityModeStack.length === 0 &&
               !velocityModeNode.hasChildren
             ) {
               currentNode = parentStack[0];

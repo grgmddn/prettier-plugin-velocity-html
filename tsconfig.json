@@ -1,33 +1,13 @@
 {
-  "include": [
-    "**/*.ts"
-  ],
-  "exclude": [
-    "spec",
-    "test",
-    "node_modules",
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts",
-  ],
   "compilerOptions": {
-    "target": "es2017",
-    "module": "commonjs",
-    "lib": [
-      "es6",
-      "es2017",
-      "dom"
-    ],
-    "declaration": false,
-    "sourceMap": true,
-    "outDir": "dist",
-    "rootDir": ".",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictPropertyInitialization": false,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "esModuleInterop": true
-  }
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src", "tsdown.config.ts"]
 }

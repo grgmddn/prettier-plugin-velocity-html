@@ -1,44 +1,50 @@
-import { format, Options as PrettierOptions } from "prettier";
+import { format, type Options as PrettierOptions } from "prettier";
 import * as fs from "fs";
 import * as process from "process";
 import * as path from "path";
 import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
 import { Page } from "playwright";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export const SCREENSHOT_FOLDER = path.join(
   process.cwd(),
   "dist",
   "test",
-  "screenshots"
+  "screenshots",
 );
 
 export const prepareScreenshotFolder = (): void => {
   if (!fs.existsSync(SCREENSHOT_FOLDER)) {
-    fs.mkdirSync(SCREENSHOT_FOLDER);
+    fs.mkdirSync(SCREENSHOT_FOLDER, { recursive: true });
   }
 };
 
 export const sleep = async (timeInMs: number): Promise<void> => {
-  return new Promise((resolve) => {
-    setTimeout(() => resolve(), timeInMs);
-  });
+  return new Promise((resolve) => setTimeout(resolve, timeInMs));
 };
 
-export const formatHtml = (input: string): string => {
-  return format(input, {
-    parser: "html",
-  });
+const loadVelocityPlugin = async () => {
+  const mod = await import(`${__dirname}/../dist/index.js`);
+  return mod.default ?? mod;
 };
 
-export const formatVelocity = (
+export const formatHtml = async (input: string): Promise<string> => {
+  return format(input, { parser: "html" });
+};
+
+export const formatVelocity = async (
   input: string,
-  options: PrettierOptions | undefined
-): string => {
+  options: PrettierOptions | undefined,
+): Promise<string> => {
+  const plugin = await loadVelocityPlugin();
   return format(input, {
     parser: "velocity-html",
-    // pluginSearchDirs: ["./dir-with-plugins"],
-    plugins: [`${__dirname}/..`],
+    plugins: [plugin],
     ...options,
   });
 };
@@ -48,87 +54,97 @@ export interface TestOptions extends PrettierOptions {
 }
 
 export const readTestcaseFile = (
-  path: string
+  filePath: string,
 ): [string, string, TestOptions] => {
-  let testCaseContent = fs.readFileSync(path).toString();
-  const configSegments = testCaseContent.split(
-    "\n" +
-      "=====================================input======================================" +
-      "\n"
+  let content = fs.readFileSync(filePath, "utf8");
+  const parts = content.split(
+    "\n=====================================input======================================\n",
   );
+
   let testOptions: TestOptions = {
     printWidth: 80,
     compareScreenshots: true,
   };
-  if (configSegments.length > 1) {
+
+  if (parts.length > 1) {
     testOptions = {
       ...testOptions,
-      ...(JSON.parse(configSegments[0]) as TestOptions),
+      ...(JSON.parse(parts[0]) as TestOptions),
     };
-    testCaseContent = configSegments[1];
+    content = parts[1];
   }
-  const elements = testCaseContent.split(
-    "\n" +
-      "=====================================output=====================================" +
-      "\n"
+
+  const [input, expectedOutput] = content.split(
+    "\n=====================================output=====================================\n",
   );
-  if (elements.length != 2) {
+
+  if (expectedOutput === undefined) {
     throw new Error(
-      `File ${path} is not valid testcase. It has ${elements.length} elements`
+      `File ${filePath} is not a valid testcase – missing output delimiter`,
     );
   }
-  return [elements[0], elements[1], testOptions];
+
+  return [input, expectedOutput, testOptions];
+};
+
+export const isAllowedFileExtension = (fileName: string): boolean => {
+  const allowed = [".html", ".vm"] as const;
+  return allowed.some((ext) => fileName.endsWith(ext));
 };
 
 export const compareScreenshots = (
   path1: string,
   path2: string,
-  prefix: string
+  prefix: string,
 ): number => {
   const png1 = PNG.sync.read(fs.readFileSync(path1));
   const png2 = PNG.sync.read(fs.readFileSync(path2));
   const { width, height } = png1;
   const diff = new PNG({ width, height });
 
-  const numberOfMismatchedPixels = pixelmatch(
+  const mismatched = pixelmatch(
     png1.data,
     png2.data,
     diff.data,
     width,
     height,
-    {
-      threshold: 0,
-    }
+    { threshold: 0 },
   );
 
   const diffPath = path.join(SCREENSHOT_FOLDER, `${prefix}.png`);
-
   fs.writeFileSync(diffPath, PNG.sync.write(diff));
 
-  return numberOfMismatchedPixels;
+  return mismatched;
 };
 
 export const takeScreenshot = async (
   page: Page,
   prefix: string,
-  html: string
+  html: string,
 ): Promise<string> => {
   const htmlPath = path.join(SCREENSHOT_FOLDER, `${prefix}.html`);
   fs.writeFileSync(htmlPath, html);
   await page.goto(`file://${htmlPath}`);
-  const isContentTooLong = await page.evaluate(
-    "Math.max(document.body.offsetHeight, document.body.clientHeight, document.body.scrollHeight) > window.innerHeight"
+
+  const tooLong = await page.evaluate(
+    "Math.max(document.body.offsetHeight, document.body.clientHeight, document.body.scrollHeight) > window.innerHeight",
   );
 
-  // Chrome shows a short loading spinner inside video elements. It cannot be paused() (only thing I have tried), therefore we wait until it is hopefully done.
-  // If we don't wait the screenshot comparision won't work.
-  if (html.includes("<video")) {
-    await sleep(2000);
-  }
+  if (html.includes("<video")) await sleep(2000);
+
   const screenshotPath = path.join(SCREENSHOT_FOLDER, `${prefix}.png`);
   await page.screenshot({ path: screenshotPath });
-  if (isContentTooLong == true) {
-    throw new Error(`Content of ${prefix} is too long.`);
+
+  if (tooLong) {
+    throw new Error(`Content of ${prefix} is too long for a single viewport.`);
   }
   return screenshotPath;
+};
+
+export const shouldRunScreenshotTests = (): boolean => {
+  // Accept either an env‑var or a CLI flag.
+  return (
+    process.env.RUN_SCREENSHOT_TESTS === "1" ||
+    process.argv.includes("--run-screenshot-tests")
+  );
 };

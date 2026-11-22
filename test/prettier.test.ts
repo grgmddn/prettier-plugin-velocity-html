@@ -1,9 +1,10 @@
-import { format } from "prettier";
-import { expect } from "chai";
 import * as fs from "fs";
 import { Browser, chromium, Page } from "playwright";
+import { test, suite, before, after } from "node:test";
+import assert from "node:assert/strict";
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 
-// TODO False negatives when --timeout is not set.
 import {
   takeScreenshot,
   compareScreenshots,
@@ -11,111 +12,128 @@ import {
   formatVelocity,
   readTestcaseFile,
   prepareScreenshotFolder,
+  shouldRunScreenshotTests,
+  isAllowedFileExtension,
 } from "./testUtils";
 
-describe("prettier", () => {
-  let browser: Browser;
-  let page: Page;
-  ([] as [string, string][]).forEach(([input, expectedOutput]) => {
-    it(`should format ${input}`, () => {
-      const formatted = format(input);
-      expect(formatted).to.equal(expectedOutput);
-    });
-  });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-  before(async () => {
-    prepareScreenshotFolder();
-    browser = await chromium.launch({
-      headless: true,
-    });
-    const browserContext = await browser.newContext({
-      viewport: {
-        height: 2000,
-        width: 1000,
-      },
-    });
-    page = await browserContext.newPage();
-  });
+let browser: Browser | undefined;
+let page: Page | undefined;
 
-  after(async () => {
-    if (browser != null) {
-      await browser.close();
-    }
-  });
+const runScreenshots = shouldRunScreenshotTests();
 
-  it("should have pixel mismatch", async () => {
-    const testCaseName = "negative_pixel_test";
-    expect(
-      compareScreenshots(
-        await takeScreenshot(
-          page,
+suite("prettier", () => {
+  /* Browser lifecycle: only created when screenshot tests are enabled. */
+  if (runScreenshots) {
+    before(async () => {
+      prepareScreenshotFolder();
+      browser = await chromium.launch({ headless: true });
+      const context = await browser.newContext({
+        viewport: { height: 2000, width: 1000 },
+      });
+      page = await context.newPage();
+    });
+
+    after(async () => {
+      if (browser) await browser.close();
+    });
+  }
+
+  /* Negative visual test: only runs when screenshots are enabled. */
+  (runScreenshots ? test : test.skip)(
+    "should have pixel mismatch",
+    async () => {
+      const testCaseName = "negative_pixel_test";
+      const mismatch = compareScreenshots(
+        await takeScreenshot!(
+          page!,
           `${testCaseName}_velocity`,
-          "<p>foo<span>bar</span></p>"
+          "<p>foo<span>bar</span></p>",
         ),
-        await takeScreenshot(
-          page,
+        await takeScreenshot!(
+          page!,
           `${testCaseName}_prettier`,
-          "<p>foo <span>bar</span></p>"
+          "<p>foo <span>bar</span></p>",
         ),
-        `${testCaseName}_diff`
-      )
-    ).to.not.equal(0);
-  });
+        `${testCaseName}_diff`,
+      );
+      assert.notEqual(mismatch, 0);
+    },
+  );
 
-  fs.readdirSync(__dirname + "/parser/invalid_html").forEach((testCaseName) => {
-    it(`should not process ${testCaseName}`, () => {
+  /* Invalid HTML: always runs (pure formatter check). */
+  for (const testCaseName of fs.readdirSync(
+    resolve(__dirname, "parser/invalid_html"),
+  )) {
+    test(`should not process ${testCaseName}`, async () => {
       const [input, expectedOutput, options] = readTestcaseFile(
-        __dirname + "/parser/invalid_html/" + testCaseName
+        resolve(__dirname, "parser/invalid_html", testCaseName),
       );
 
-      let hasError = false;
-
+      let threw = false;
       try {
-        formatVelocity(input, options);
+        await formatVelocity(input, options);
       } catch (e: unknown) {
-        hasError = true;
+        threw = true;
         if (e instanceof Error) {
-          // eslint-disable-next-line no-control-regex
-          expect(e.message.replace(/\u001b\[.*?m/g, "")).to.equal(
-            expectedOutput
-          );
+          const clean = e.message.replace(/\u001b\[.*?m/g, "");
+          assert.strictEqual(clean, expectedOutput);
         } else {
           throw new Error(`Unknown error type ${typeof e}`);
         }
       }
-
-      expect(hasError).to.be.true;
+      assert.ok(threw, "expected formatter to throw");
     });
-  });
+  }
 
-  fs.readdirSync(__dirname + "/parser/valid_html/").forEach((testCaseName) => {
-    it(`should format ${testCaseName}`, async () => {
+  /* Valid HTML: textual assertion always runs, screenshots run only when enabled. */
+  for (const testCaseName of fs.readdirSync(
+    resolve(__dirname, "parser/valid_html"),
+  )) {
+    if (!isAllowedFileExtension(testCaseName)) continue;
+
+    /* Check textual equality: always runs. */
+    test(`should format ${testCaseName} (textual)`, async () => {
       const [input, expectedOutput, options] = readTestcaseFile(
-        __dirname + "/parser/valid_html/" + testCaseName
-      );
-      const formatted = formatVelocity(input, options);
-
-      const prettierFormatted = formatHtml(input);
-
-      const numberOfMismatchedPixels = compareScreenshots(
-        await takeScreenshot(page, `${testCaseName}_velocity`, formatted),
-        await takeScreenshot(
-          page,
-          `${testCaseName}_prettier`,
-          prettierFormatted
-        ),
-        `${testCaseName}_diff`
+        resolve(__dirname, "parser/valid_html", testCaseName),
       );
 
-      // Comparing strings prints a very good diff.
-      expect(formatted).to.equal(
-        expectedOutput,
-        `Expected does not match actual. Rendered output is equal to prettier? ${
-          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-          numberOfMismatchedPixels === 0
-        }`
-      );
-      expect(numberOfMismatchedPixels).to.equal(0);
+      const formatted = await formatVelocity(input, options);
+      assert.strictEqual(formatted, expectedOutput);
     });
-  });
+
+    /* Check pixel parity with vanilla Prettier: only runs when screenshots are enabled. */
+    (runScreenshots ? test : test.skip)(
+      `should format ${testCaseName} (visual)`,
+      async () => {
+        const [input, expectedOutput, options] = readTestcaseFile(
+          resolve(__dirname, "parser/valid_html", testCaseName),
+        );
+
+        const formatted = await formatVelocity(input, options);
+        const prettierFormatted = await formatHtml(input);
+
+        const mismatchedPixels = compareScreenshots(
+          await takeScreenshot!(page!, `${testCaseName}_velocity`, formatted),
+          await takeScreenshot!(
+            page!,
+            `${testCaseName}_prettier`,
+            prettierFormatted,
+          ),
+          `${testCaseName}_diff`,
+        );
+
+        assert.strictEqual(
+          formatted,
+          expectedOutput,
+          `Expected does not match actual. Rendered output is equal to prettier? ${
+            mismatchedPixels === 0
+          }`,
+        );
+        assert.strictEqual(mismatchedPixels, 0);
+      },
+    );
+  }
 });

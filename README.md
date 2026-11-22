@@ -1,29 +1,84 @@
-Prettier plugin that formats HTML containing Velocity code
+# @grgmddn/prettier-plugin-velocity-html
 
-<br/>
+A [Prettier](https://prettier.io) 3 plugin that formats HTML containing [Apache Velocity](https://velocity.apache.org/) code.
 
-### Try your Velocity code using the interactive **[Playground](https://prettier-plugin-velocity-html.herokuapp.com/)**
-or install it using `npm i prettier-plugin-velocity-html`. 
-<br/>
-The plugin will try to format all files ending in `.vm`. Alternatively you can use the `--parser "velocity-html"` switch of the Prettier CLI.
+> This is a fork of [fvclaus/prettier-plugin-velocity-html](https://github.com/fvclaus/prettier-plugin-velocity-html), updated for Prettier 3. If you are on Prettier 2, use the [original package](https://www.npmjs.com/package/prettier-plugin-velocity-html). See [Attribution](#attribution).
 
-<br/>
+## Installation
+
+Install the plugin as a dev dependency:
+
+```sh
+npm install --save-dev prettier @grgmddn/prettier-plugin-velocity-html
+```
+
+Then add it to your [Prettier configuration](https://prettier.io/docs/configuration):
+
+```json
+// .prettierrc
+{
+  "plugins": ["@grgmddn/prettier-plugin-velocity-html"]
+}
+```
+
+Or, with a JavaScript config:
+
+```js
+// prettier.config.mjs
+export default {
+  plugins: ["@grgmddn/prettier-plugin-velocity-html"],
+};
+```
+
+Files ending in `.vm` are formatted automatically. For other extensions, set the parser in an override:
+
+```json
+{
+  "plugins": ["@grgmddn/prettier-plugin-velocity-html"],
+  "overrides": [{ "files": "*.htm", "options": { "parser": "velocity-html" } }]
+}
+```
+
+## Usage
+
+### CLI
+
+```sh
+npx prettier --write "src/**/*.vm"
+```
+
+To load the plugin without a config file:
+
+```sh
+npx prettier --plugin=@grgmddn/prettier-plugin-velocity-html --write "src/**/*.vm"
+```
+
+### API
+
+```js
+import * as prettier from "prettier";
+
+const output = await prettier.format(source, {
+  parser: "velocity-html",
+  plugins: ["@grgmddn/prettier-plugin-velocity-html"],
+});
+```
 
 ## Motivation
-I was looking for one IDE inpendent, maven compatible solution to format and enforce a codestyle for Java, XML, Velocity+HTML and JS. Prettier supports HTML and JS out of the box. Java support is provided by [prettier-java](https://github.com/jhipster/prettier-java) and XML by [@prettier/plugin-xml](https://github.com/prettier/plugin-xml). The Prettier HTML parser is pretty robust and can parse most Velocity code. AFAIK there are only two cases it can't handle:
-- Using HTML language elements in velocity strings: `#(set $htmlElement ="<div>")`
-- Using Velocity fragments (a `footer.vm` for example): `</div> </div> <div> Footer text ... </div> </body> </html>`
 
+Prettier's HTML parser is robust and can parse most Velocity code. There are only two cases it can't handle:
 
-I have never seen the first example in real life, the second is pretty common in my experience.
+- HTML elements inside Velocity strings: `#set($htmlElement = "<div>")`
+- Velocity fragments that aren't well-formed HTML on their own, such as a `footer.vm` containing `</div></div><div>Footer text ...</div></body></html>`
 
-Even if Prettier can parse HTML Velocity code, it is unlikely to improve the formatting of the code, because it will treat every Velocity element as text and will lay it out as such:
+Even where Prettier can parse Velocity HTML, it is unlikely to improve the formatting. It treats every Velocity directive as text and lays it out as such:
 
-### Original 
-```
+**Original**
+
+```velocity
 #set ($serviceName = $context.serviceName)
 #if ($serviceName)
-	<legend>
+  <legend>
         #encodeForHTML($serviceName)
     </legend>
 #else
@@ -32,16 +87,20 @@ Even if Prettier can parse HTML Velocity code, it is unlikely to improve the for
     </legend>
 #end
 ```
-### Prettier HTML
-```
+
+**Prettier HTML**
+
+```velocity
 #set ($serviceName = $context.serviceName) #if ($serviceName)
 <legend>#encodeForHTML($serviceName)</legend>
 #else
 <legend>Login to anonymous service</legend>
 #end
 ```
-### Prettier Velocity HTML
-```
+
+**Prettier Velocity HTML**
+
+```velocity
 #set($serviceName = $context.serviceName)
 #if($serviceName)
   <legend>#encodeForHTML($serviceName)</legend>
@@ -50,116 +109,54 @@ Even if Prettier can parse HTML Velocity code, it is unlikely to improve the for
 #end
 ```
 
-## How to integrate it
-There are multiple ways to do this. I will describe the solution I used in the project that motivated this plugin.
-### IDE integration
-- Create a `package.json` in a folder called `formatter` using `npm init`.
-- Install `prettier` and all plugins using `npm i <package-name> --save`. This installation of prettier and its plugin will be configured in your IDE
-- Add `package.json` and `package-lock.json` to your version control. Exclude `node_modules/`
-- Install the Prettier plugin for your IDE. For IntelliJ use [Prettier](https://plugins.jetbrains.com/plugin/10456-prettier). For Visual Studio Code use [prettier-vscode](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode).
-- Configure the location of your prettier installation (the Prettier executable inside the `formatter` folder). Consult the documentation for the mentioned plugins
-
-### CI Integration
-This is written for Maven
-- Add [spotless](https://github.com/diffplug/spotless) plugin to your `pom.xml`
-```
-<plugin>
-  <groupId>com.diffplug.spotless</groupId>
-  <artifactId>spotless-maven-plugin</artifactId>
-  <version>${maven-spotless-plugin.version}</version>
-  <executions>
-      <execution>
-          <id>check-formatting</id>
-          <goals>
-              <goal>check</goal>
-          </goals>
-          <phase>validate</phase>
-      </execution>
-  </executions>
-  <configuration>
-      <formats>
-          <format>
-              <includes>
-                  <include>**/src/**/*.java</include>
-                  <include>**/src/**/*.js</include>
-                  <include>**/src/**/*.xml</include>
-                  <include>**/src/**/*.vm</include>
-                  <include>pom.xml</include>
-              </includes>
-              <excludes>
-                  <exclude>**/node_modules/**</exclude>
-              </excludes>
-
-              <prettier>
-                  <npmExecutable>${project.basedir}/node/npm</npmExecutable>
-                  <!-- Prettier versions have to be duplicated here and in formatter/package.json. See https://github.com/diffplug/spotless/issues/675 -->
-                  <devDependencyProperties>
-                      <property>
-                          <name>prettier</name>
-                          <value><!-- VERSION --></value>
-                      </property>
-                      <property>
-                          <name>@prettier/plugin-xml</name>
-                          <value><!-- VERSION --></value>
-                      </property>
-                      <property>
-                          <name>prettier-plugin-java</name>
-                          <value><!-- VERSION --></value>
-                      </property>
-                      <property>
-                          <name>prettier-plugin-velocity-html</name>
-                          <value><!-- VERSION --></value>
-                      </property>
-                  </devDependencyProperties>
-                  <configFile>${project.basedir}/.prettierrc.json</configFile>
-              </prettier>
-          </format>
-      </formats>
-  </configuration>
-</plugin>
-```
-- As you can see above, spotless will install Prettier and its plugins again. It currently does not support using a existing installation.
-- One way to provide Node and NPM is the [frontend-maven-plugin](https://github.com/eirslett/frontend-maven-plugin)
-```
-<plugin>
-    <groupId>com.github.eirslett</groupId>
-    <artifactId>frontend-maven-plugin</artifactId>
-    <version>${maven-frontend-plugin.version}</version>
-    <executions>
-        <execution>
-            <id>install node and npm</id>
-            <goals>
-                <goal>install-node-and-npm</goal>
-            </goals>
-            <phase>validate</phase>
-        </execution>
-    </executions>
-    <configuration>
-        <nodeVersion>v10.18.0</nodeVersion>
-        <installDirectory>${project.basedir}</installDirectory>
-    </configuration>
-</plugin>
-```
-- Run `mvn spotless:check` in your pipeline.
-
-
 ## How it works
-There are two render modes for elements: **block** and **inline**. Block elements will break its children uniformly, whereas inline elements will try to fill as much horizontal space as possible. Whitespace in block elements is not significant, whitespace in inline elements is significant. Inline elements will break the opening or closing tag to avoid inserting whitespace where none was present in the original code. Block elements will never break opening or closing tags.
 
-### inline
-```
+Elements are rendered in one of two modes, **block** or **inline**:
+
+- **Block** elements break their children uniformly. Whitespace is not significant, and opening and closing tags are never broken.
+- **Inline** elements fill as much horizontal space as possible. Whitespace is significant, so the opening or closing tag is broken where necessary to avoid inserting whitespace that was not in the original code.
+
+The mode is chosen from the element name. It describes how elements are laid out *in code*, not how a browser renders them. Block mode is used to improve readability wherever whitespace has no meaning.
+
+**Inline**
+
+```html
 <span> inline </span><span> inline </span> <span> inline </span><span>
   inline</span
 >
 ```
 
-### block
-```
+**Block**
+
+```html
 <datalist id="colors">
   <option>Blue</option>
   <option>Green</option>
 </datalist>
 ```
-The decision to treat one element one way or the other is made based on the element name. Block and inline refer to the way elements will be laid out in code not how they are rendered in a browser. We will use block elements to improve readability in places where whitespace has no meaning.
-This plugin comes with its own HTML parser. It is tested using all relevant test cases from the Prettier HTML parser. The output will not always be identical to Prettier HTML. I wanted to avoid the excessive complexity in Prettier's codebase and simplified some cases.
 
+The plugin ships with its own HTML parser, tested against all relevant test cases from Prettier's HTML parser. Output is not always identical to Prettier's HTML formatter, because some cases were simplified to avoid the complexity of Prettier's codebase.
+
+## What's different in this fork
+
+- Supports Prettier v3. Prettier 2 is no longer supported; use the [original package](https://www.npmjs.com/package/prettier-plugin-velocity-html) for v2.
+- Dual ESM/CJS builds, Node.js `>=18`.
+- No runtime dependencies.
+- Published as the scoped package `@grgmddn/prettier-plugin-velocity-html`.
+- The hosted Playground has been removed.
+- Parser generated with `antlr-ng`, built with `tsdown`, tested with `node:test`. Java is not required to generate the lexer.
+
+## Contributing
+
+```sh
+npm install
+npm run build     # generate the parser and bundle
+npm test          # build, then run the test suite
+npm run verify    # format check, lint and type check
+```
+
+Issues and pull requests are welcome at [grgmddn/prettier-plugin-velocity-html](https://github.com/grgmddn/prettier-plugin-velocity-html/issues).
+
+## Attribution
+
+This package is a fork of [prettier-plugin-velocity-html](https://github.com/fvclaus/prettier-plugin-velocity-html) by [Frederik Claus](https://github.com/fvclaus), updated for compatibility with Prettier v3. The original design, parser, motivation and tests described above are his work.
